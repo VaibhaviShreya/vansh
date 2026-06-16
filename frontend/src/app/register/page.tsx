@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { FaUser, FaPhone, FaLock, FaEnvelope, FaArrowRight } from 'react-icons/fa'
+import { FaUser, FaPhone, FaLock, FaEnvelope, FaArrowRight, FaSpinner } from 'react-icons/fa'
 import { useAuth } from '@/hooks/useAuth'
 import toast from 'react-hot-toast'
 
@@ -18,6 +18,7 @@ export default function RegisterPage() {
     confirmPassword: '',
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [otpSent, setOtpSent] = useState(false)
   const router = useRouter()
   const { sendOTP, verifyOTP, register } = useAuth()
 
@@ -31,11 +32,14 @@ export default function RegisterPage() {
 
     setIsLoading(true)
     try {
-      await sendOTP(formData.mobile)
+      const response = await sendOTP(formData.mobile)
+      console.log('OTP sent successfully:', response)
+      setOtpSent(true)
       setStep(2)
-      toast.success('OTP sent to your mobile number')
-    } catch (error) {
-      // Error handled in hook
+      toast.success('OTP sent to your mobile number!')
+    } catch (error: any) {
+      console.error('Send OTP error:', error)
+      toast.error(error.message || 'Failed to send OTP. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -51,11 +55,13 @@ export default function RegisterPage() {
 
     setIsLoading(true)
     try {
-      await verifyOTP(formData.mobile, formData.otp)
+      const token = await verifyOTP(formData.mobile, formData.otp)
+      console.log('OTP verified successfully:', token)
       setStep(3)
       toast.success('OTP verified successfully!')
-    } catch (error) {
-      // Error handled in hook
+    } catch (error: any) {
+      console.error('Verify OTP error:', error)
+      toast.error(error.message || 'Invalid OTP. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -87,9 +93,24 @@ export default function RegisterPage() {
         password: formData.password,
         otp: formData.otp,
       })
+      toast.success('Registration successful!')
       router.push('/dashboard')
-    } catch (error) {
-      // Error handled in hook
+    } catch (error: any) {
+      console.error('Registration error:', error)
+      toast.error(error.message || 'Registration failed. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Resend OTP
+  const handleResendOTP = async () => {
+    setIsLoading(true)
+    try {
+      await sendOTP(formData.mobile)
+      toast.success('OTP resent successfully!')
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to resend OTP')
     } finally {
       setIsLoading(false)
     }
@@ -152,6 +173,7 @@ export default function RegisterPage() {
                   placeholder="Enter your full name"
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -170,8 +192,10 @@ export default function RegisterPage() {
                   maxLength={10}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
+                  disabled={isLoading}
                 />
               </div>
+              <p className="text-xs text-gray-500 mt-1">We'll send a 6-digit OTP to this number</p>
             </div>
 
             <button
@@ -180,7 +204,9 @@ export default function RegisterPage() {
               className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+                <>
+                  <FaSpinner className="animate-spin" /> Sending OTP...
+                </>
               ) : (
                 <>
                   Send OTP
@@ -206,8 +232,10 @@ export default function RegisterPage() {
                   onChange={(e) => setFormData({ ...formData, otp: e.target.value })}
                   placeholder="Enter 6-digit OTP"
                   maxLength={6}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-2xl tracking-widest"
                   required
+                  disabled={isLoading}
+                  autoFocus
                 />
               </div>
               <p className="text-sm text-gray-500 mt-2">
@@ -221,7 +249,9 @@ export default function RegisterPage() {
               className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+                <>
+                  <FaSpinner className="animate-spin" /> Verifying...
+                </>
               ) : (
                 <>
                   Verify OTP
@@ -232,8 +262,9 @@ export default function RegisterPage() {
 
             <button
               type="button"
-              onClick={handleSendOTP}
-              className="w-full text-blue-600 hover:text-blue-700 font-semibold text-sm"
+              onClick={handleResendOTP}
+              disabled={isLoading}
+              className="w-full text-blue-600 hover:text-blue-700 font-semibold text-sm disabled:opacity-50"
             >
               Resend OTP
             </button>
@@ -256,6 +287,7 @@ export default function RegisterPage() {
                   placeholder="Minimum 6 characters"
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -273,6 +305,7 @@ export default function RegisterPage() {
                   placeholder="Confirm your password"
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -283,7 +316,9 @@ export default function RegisterPage() {
               className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+                <>
+                  <FaSpinner className="animate-spin" /> Creating Account...
+                </>
               ) : (
                 <>
                   Create Account
