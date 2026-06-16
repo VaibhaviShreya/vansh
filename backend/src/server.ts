@@ -21,19 +21,75 @@ const limiter = rateLimit({
   max: 100,
 })
 
-// Middleware
-app.use(helmet())
+// ============================================
+// CORS Configuration - FIXED
+// ============================================
+const allowedOrigins = [
+  'https://vansh-beta.vercel.app',
+  'https://vansh-beta-control-check.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://vansh-0kyd.onrender.com',
+  // Add any other frontend URLs you're using
+]
+
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-frontend-url.onrender.com', 'https://vansh-enterprises.vercel.app']
-    : ['http://localhost:3000', 'http://localhost:3001'],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true)
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
+      callback(null, true)
+    } else {
+      console.warn('❌ CORS blocked for origin:', origin)
+      callback(new Error('Not allowed by CORS'))
+    }
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Access-Control-Allow-Origin',
+    'Access-Control-Allow-Headers',
+    'Access-Control-Allow-Methods'
+  ],
+  exposedHeaders: ['Content-Length', 'X-Requested-With'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+}))
+
+// Handle preflight requests explicitly
+app.options('*', cors())
+
+// Middleware
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginOpenerPolicy: { policy: "unsafe-none" },
 }))
 app.use(compression())
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 app.use('/api', limiter)
+
+// Add CORS headers middleware (additional safety)
+app.use((req, res, next) => {
+  const origin = req.headers.origin
+  if (origin && allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin)
+    res.header('Access-Control-Allow-Credentials', 'true')
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH')
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+  }
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204)
+  }
+  next()
+})
 
 // API Routes
 app.use('/api', apiRoutes)
@@ -47,7 +103,11 @@ app.get('/api/health', (req, res) => {
       api: 'running',
       mongodb: 'connected',
     },
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    cors: {
+      allowedOrigins: allowedOrigins,
+      currentOrigin: req.headers.origin || 'none'
+    }
   })
 })
 
@@ -77,14 +137,12 @@ app.use((req, res) => {
   })
 })
 
-// Start server function
+// Start server
 const startServer = async () => {
   try {
-    // Connect to MongoDB
     await connectDB()
     console.log('✅ MongoDB connected successfully')
     
-    // Connect to Redis (non-blocking)
     try {
       await connectRedis()
     } catch (error: any) {
@@ -92,11 +150,11 @@ const startServer = async () => {
       console.log('✅ Using in-memory OTP storage as fallback')
     }
     
-    // Start server
     app.listen(PORT, () => {
       console.log(`\n🚀 Server running on port ${PORT}`)
       console.log(`📡 API: http://localhost:${PORT}/api`)
       console.log(`📡 Health: http://localhost:${PORT}/api/health`)
+      console.log(`\n🔒 Allowed Origins:`, allowedOrigins)
       console.log(`\n📊 Environment: ${process.env.NODE_ENV || 'development'}`)
     })
   } catch (error) {
@@ -105,7 +163,6 @@ const startServer = async () => {
   }
 }
 
-// Start the server
 startServer()
 
 export default app
