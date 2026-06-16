@@ -24,11 +24,13 @@ const limiter = rateLimit({
 // Middleware
 app.use(helmet())
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001'],
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://your-frontend-url.onrender.com', 'https://vansh-enterprises.vercel.app']
+    : ['http://localhost:3000', 'http://localhost:3001'],
   credentials: true,
 }))
 app.use(compression())
-app.use(morgan('dev'))
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 app.use('/api', limiter)
@@ -44,6 +46,22 @@ app.get('/api/health', (req, res) => {
     services: {
       api: 'running',
       mongodb: 'connected',
+    },
+    environment: process.env.NODE_ENV || 'development'
+  })
+})
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    name: 'Vansh Enterprises API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      products: '/api/products',
+      orders: '/api/orders'
     }
   })
 })
@@ -79,9 +97,6 @@ const startServer = async () => {
       console.log(`\n🚀 Server running on port ${PORT}`)
       console.log(`📡 API: http://localhost:${PORT}/api`)
       console.log(`📡 Health: http://localhost:${PORT}/api/health`)
-      console.log(`\n🔑 Default Admin Login:`)
-      console.log(`   Mobile: 9999999999`)
-      console.log(`   Password: admin123`)
       console.log(`\n📊 Environment: ${process.env.NODE_ENV || 'development'}`)
     })
   } catch (error) {
