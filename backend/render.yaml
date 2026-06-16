@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: vansh-enterprises-backend
+    env: node
+    plan: free
+    region: oregon
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "5000"
