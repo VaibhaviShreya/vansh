@@ -1,22 +1,20 @@
 import express from 'express'
-import { protect } from '../middleware/auth'
+import { protect, admin } from '../middleware/auth'
 import { 
-  createOrder, 
-  getOrders, 
-  getOrderById, 
-  updateOrderStatus,
-  getMyOrders 
-} from '../controllers/orders'
+  getCategories, 
+  createCategory, 
+  updateCategory, 
+  deleteCategory 
+} from '../controllers/categories'
 
 const router = express.Router()
 
-// Protected routes
-router.post('/', protect, createOrder)
-router.get('/my-orders', protect, getMyOrders)
-router.get('/:id', protect, getOrderById)
+// Public routes
+router.get('/', getCategories)
 
 // Admin routes
-router.get('/', protect, getOrders)
-router.put('/:id/status', protect, updateOrderStatus)
+router.post('/', protect, admin, createCategory)
+router.put('/:id', protect, admin, updateCategory)
+router.delete('/:id', protect, admin, deleteCategory)
 
 export default router

@@ -15,7 +15,10 @@ export const protect = async (
     const token = req.headers.authorization?.replace('Bearer ', '')
 
     if (!token) {
-      return res.status(401).json({ message: 'Not authorized, no token' })
+      return res.status(401).json({ 
+        success: false,
+        message: 'Not authorized, no token' 
+      })
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
@@ -25,13 +28,19 @@ export const protect = async (
 
     const user = await User.findById(decoded.id).select('-password')
     if (!user) {
-      return res.status(401).json({ message: 'User not found' })
+      return res.status(401).json({ 
+        success: false,
+        message: 'User not found' 
+      })
     }
 
     req.user = user
     next()
   } catch (error) {
-    res.status(401).json({ message: 'Not authorized, invalid token' })
+    res.status(401).json({ 
+      success: false,
+      message: 'Not authorized, invalid token' 
+    })
   }
 }
 
@@ -39,6 +48,9 @@ export const admin = (req: AuthRequest, res: Response, next: NextFunction) => {
   if (req.user && req.user.role === 'admin') {
     next()
   } else {
-    res.status(403).json({ message: 'Admin access required' })
+    res.status(403).json({ 
+      success: false,
+      message: 'Admin access required' 
+    })
   }
 }

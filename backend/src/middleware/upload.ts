@@ -4,10 +4,11 @@ import { Request } from 'express'
 const storage = multer.memoryStorage()
 
 const fileFilter = (req: Request, file: any, cb: any) => {
-  if (file.mimetype.startsWith('image/')) {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+  if (allowedTypes.includes(file.mimetype)) {
     cb(null, true)
   } else {
-    cb(new Error('Only image files are allowed'), false)
+    cb(new Error('Only image files are allowed (JPEG, PNG, WEBP, GIF)'), false)
   }
 }
 
