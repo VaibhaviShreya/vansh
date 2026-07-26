@@ -109,7 +109,7 @@ const Footer = () => {
                 </span>
               </div>
               <div className="flex items-center space-x-3">
-                <FaPhone className="text-primary-blue" />
+                <FaPhone className="text-primary-blue" style={{ transform: 'scaleX(-1)' }} />
                 <a href="tel:++916261758053" className="text-gray-400 hover:text-primary-blue transition-colors">
                   +916261758053
                 </a>

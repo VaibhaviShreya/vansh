@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { FaUser, FaPhone, FaLock, FaEnvelope, FaArrowRight, FaSpinner } from 'react-icons/fa'
+import { FaUser, FaPhone, FaLock, FaEnvelope, FaArrowRight, FaSpinner, FaCheckCircle } from 'react-icons/fa'
 import { useAuth } from '@/hooks/useAuth'
 import toast from 'react-hot-toast'
 
@@ -18,24 +18,36 @@ export default function RegisterPage() {
     confirmPassword: '',
   })
   const [isLoading, setIsLoading] = useState(false)
-  const [otpSent, setOtpSent] = useState(false)
+  const [verification, setVerification] = useState<{ userId: string; token: string } | null>(null)
+  const [timer, setTimer] = useState(0)
   const router = useRouter()
-  const { sendOTP, verifyOTP, register } = useAuth()
+  const { sendOTP, verifyOTP, register, resendOTP } = useAuth()
+
+  // OTP Timer
+  useEffect(() => {
+    if (timer > 0) {
+      const interval = setInterval(() => {
+        setTimer((prev) => prev - 1)
+      }, 1000)
+      return () => clearInterval(interval)
+    }
+  }, [timer])
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!formData.mobile || formData.mobile.length !== 10) {
+    const mobile = formData.mobile.replace(/\D/g, '')
+    if (mobile.length !== 10) {
       toast.error('Please enter a valid 10-digit mobile number')
       return
     }
 
     setIsLoading(true)
     try {
-      const response = await sendOTP(formData.mobile)
-      console.log('OTP sent successfully:', response)
-      setOtpSent(true)
+      await sendOTP(mobile)
+      setFormData((current) => ({ ...current, mobile, otp: '' }))
       setStep(2)
+      setTimer(60)
       toast.success('OTP sent to your mobile number!')
     } catch (error: any) {
       console.error('Send OTP error:', error)
@@ -45,35 +57,32 @@ export default function RegisterPage() {
     }
   }
 
-  // In handleVerifyOTP function, send name along with mobile and otp
-// Update the handleVerifyOTP function
-const handleVerifyOTP = async (e: React.FormEvent) => {
-  e.preventDefault()
+  const handleVerifyOTP = async (e: React.FormEvent) => {
+    e.preventDefault()
   
-  if (!formData.otp || formData.otp.length !== 6) {
-    toast.error('Please enter a valid 6-digit OTP')
-    return
-  }
+    if (!/^\d{6}$/.test(formData.otp)) {
+      toast.error('Please enter a valid 6-digit OTP')
+      return
+    }
 
-  setIsLoading(true)
-  try {
-    // Pass name as third argument
-    const result = await verifyOTP(formData.mobile, formData.otp, formData.name)
-    console.log('OTP verified successfully:', result)
-    setStep(3)
-    toast.success('OTP verified successfully!')
-  } catch (error: any) {
-    console.error('Verify OTP error:', error)
-    toast.error(error.message || 'Invalid OTP. Please try again.')
-  } finally {
-    setIsLoading(false)
+    setIsLoading(true)
+    try {
+      const result = await verifyOTP(formData.mobile, formData.otp, formData.name.trim())
+      if (!result.userId || !result.token) throw new Error('OTP verification did not return a registration session')
+      setVerification(result)
+      setStep(3)
+      toast.success('OTP verified successfully!')
+    } catch (error: any) {
+      toast.error(error.message || 'Invalid OTP. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
   }
-}
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!formData.name || !formData.password) {
+    if (!formData.name.trim() || !formData.password || !verification) {
       toast.error('Please fill in all fields')
       return
     }
@@ -91,13 +100,12 @@ const handleVerifyOTP = async (e: React.FormEvent) => {
     setIsLoading(true)
     try {
       await register({
-        name: formData.name,
-        mobile: formData.mobile,
+        userId: verification.userId,
         password: formData.password,
-        otp: formData.otp,
+        verificationToken: verification.token,
+        name: formData.name.trim()
       })
-      toast.success('Registration successful!')
-      router.push('/dashboard')
+      // Registration success - redirect handled in useAuth
     } catch (error: any) {
       console.error('Registration error:', error)
       toast.error(error.message || 'Registration failed. Please try again.')
@@ -108,15 +116,28 @@ const handleVerifyOTP = async (e: React.FormEvent) => {
 
   // Resend OTP
   const handleResendOTP = async () => {
+    if (timer > 0) {
+      toast.error(`Please wait ${timer} seconds before resending`)
+      return
+    }
+    
     setIsLoading(true)
     try {
-      await sendOTP(formData.mobile)
+      await resendOTP(formData.mobile)
+      setTimer(60)
       toast.success('OTP resent successfully!')
     } catch (error: any) {
       toast.error(error.message || 'Failed to resend OTP')
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Format timer
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
   return (
@@ -128,6 +149,9 @@ const handleVerifyOTP = async (e: React.FormEvent) => {
         className="bg-white rounded-2xl shadow-xl max-w-md w-full p-8"
       >
         <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+            <FaUser className="text-2xl text-blue-600" />
+          </div>
           <h1 className="text-3xl font-bold text-slate-900">Create Account</h1>
           <p className="text-gray-600 mt-2">
             {step === 1 && 'Enter your mobile number to get started'}
@@ -142,15 +166,15 @@ const handleVerifyOTP = async (e: React.FormEvent) => {
             {[1, 2, 3].map((s) => (
               <div key={s} className="flex items-center">
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                    s <= step ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
+                    s <= step ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-gray-200 text-gray-500'
                   }`}
                 >
-                  {s}
+                  {s < step ? <FaCheckCircle className="text-white" /> : s}
                 </div>
                 {s < 3 && (
                   <div
-                    className={`w-12 h-1 ${
+                    className={`w-12 h-1 transition-all duration-300 ${
                       s < step ? 'bg-blue-600' : 'bg-gray-200'
                     }`}
                   />
@@ -165,7 +189,7 @@ const handleVerifyOTP = async (e: React.FormEvent) => {
           <form onSubmit={handleSendOTP} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Full Name
+                Full Name <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -174,7 +198,7 @@ const handleVerifyOTP = async (e: React.FormEvent) => {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Enter your full name"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   required
                   disabled={isLoading}
                 />
@@ -183,17 +207,17 @@ const handleVerifyOTP = async (e: React.FormEvent) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Mobile Number
+                Mobile Number <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" style={{ transform: 'scaleX(-1)' }} />
                 <input
                   type="tel"
                   value={formData.mobile}
                   onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
                   placeholder="Enter 10-digit mobile number"
                   maxLength={10}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   required
                   disabled={isLoading}
                 />
@@ -204,7 +228,7 @@ const handleVerifyOTP = async (e: React.FormEvent) => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-blue-200"
             >
               {isLoading ? (
                 <>
@@ -225,7 +249,7 @@ const handleVerifyOTP = async (e: React.FormEvent) => {
           <form onSubmit={handleVerifyOTP} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Enter OTP
+                Enter OTP <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -235,21 +259,28 @@ const handleVerifyOTP = async (e: React.FormEvent) => {
                   onChange={(e) => setFormData({ ...formData, otp: e.target.value })}
                   placeholder="Enter 6-digit OTP"
                   maxLength={6}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-2xl tracking-widest"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-2xl tracking-widest transition-all"
                   required
                   disabled={isLoading}
                   autoFocus
                 />
               </div>
-              <p className="text-sm text-gray-500 mt-2">
-                OTP sent to {formData.mobile}
-              </p>
+              <div className="flex justify-between items-center mt-2">
+                <p className="text-sm text-gray-500">
+                  OTP sent to {formData.mobile}
+                </p>
+                {timer > 0 && (
+                  <span className="text-sm text-blue-600 font-semibold">
+                    {formatTime(timer)}
+                  </span>
+                )}
+              </div>
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-blue-200"
             >
               {isLoading ? (
                 <>
@@ -266,10 +297,14 @@ const handleVerifyOTP = async (e: React.FormEvent) => {
             <button
               type="button"
               onClick={handleResendOTP}
-              disabled={isLoading}
-              className="w-full text-blue-600 hover:text-blue-700 font-semibold text-sm disabled:opacity-50"
+              disabled={isLoading || timer > 0}
+              className={`w-full text-center font-semibold text-sm transition-all ${
+                timer > 0 
+                  ? 'text-gray-400 cursor-not-allowed' 
+                  : 'text-blue-600 hover:text-blue-700'
+              }`}
             >
-              Resend OTP
+              {timer > 0 ? `Resend OTP in ${formatTime(timer)}` : 'Resend OTP'}
             </button>
           </form>
         )}
@@ -279,7 +314,7 @@ const handleVerifyOTP = async (e: React.FormEvent) => {
           <form onSubmit={handleRegister} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Create Password
+                Create Password <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -288,16 +323,17 @@ const handleVerifyOTP = async (e: React.FormEvent) => {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder="Minimum 6 characters"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   required
                   disabled={isLoading}
                 />
               </div>
+              <p className="text-xs text-gray-500 mt-1">Must be at least 6 characters</p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Confirm Password
+                Confirm Password <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -306,17 +342,35 @@ const handleVerifyOTP = async (e: React.FormEvent) => {
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   placeholder="Confirm your password"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   required
                   disabled={isLoading}
                 />
               </div>
             </div>
 
+            {/* Password Strength Indicator */}
+            {formData.password && (
+              <div className="mt-2">
+                <div className="flex items-center gap-2">
+                  <div className={`flex-1 h-1 rounded-full ${
+                    formData.password.length < 4 ? 'bg-red-400' :
+                    formData.password.length < 6 ? 'bg-yellow-400' :
+                    'bg-green-400'
+                  }`} />
+                  <span className="text-xs text-gray-500">
+                    {formData.password.length < 4 ? 'Weak' :
+                     formData.password.length < 6 ? 'Fair' :
+                     'Strong'}
+                  </span>
+                </div>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-blue-200"
             >
               {isLoading ? (
                 <>
@@ -334,7 +388,7 @@ const handleVerifyOTP = async (e: React.FormEvent) => {
 
         <p className="text-center text-gray-600 mt-6">
           Already have an account?{' '}
-          <Link href="/login" className="text-blue-600 hover:text-blue-700 font-semibold hover:underline">
+          <Link href="/login" className="text-blue-600 hover:text-blue-700 font-semibold hover:underline transition-all">
             Sign In
           </Link>
         </p>

@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { FaWhatsapp, FaEye } from 'react-icons/fa'
-import axios from 'axios'
+import { motion } from 'framer-motion'
+import { FaWhatsapp, FaPhone, FaCheck, FaArrowLeft } from 'react-icons/fa'
 import toast from 'react-hot-toast'
+import axios from 'axios'
 
-// Complete Product interface
 interface Product {
   _id: string
   name: string
@@ -16,39 +17,73 @@ interface Product {
   images: string[]
   category: string
   moq: number
-  features?: string[]  // Optional features
-  specifications?: Record<string, string>
+  specifications: Record<string, string>
+  features: string[]
 }
 
-export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>([])
+export default function ProductDetailsPage() {
+  const { slug } = useParams()
+  const router = useRouter()
+  const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
+  const [mainImage, setMainImage] = useState('')
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
 
   useEffect(() => {
-    fetchProducts()
-  }, [])
-
-  const fetchProducts = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/products`)
-      console.log('Products response:', response.data)
-      setProducts(response.data.products || [])
-    } catch (error) {
-      console.error('Failed to fetch products:', error)
-      toast.error('Failed to load products')
-    } finally {
-      setLoading(false)
+    const fetchProduct = async () => {
+      try {
+        setLoading(true)
+        console.log(`📤 Fetching product: ${slug}`)
+        
+        // Correct API endpoint - using /slug/ route
+        const response = await axios.get(`${API_URL}/products/slug/${slug}`)
+        console.log('✅ Product response:', response.data)
+        
+        if (response.data.success && response.data.product) {
+          setProduct(response.data.product)
+          if (response.data.product.images && response.data.product.images.length > 0) {
+            setMainImage(response.data.product.images[0])
+          }
+        } else {
+          toast.error('Product not found')
+          router.push('/products')
+        }
+      } catch (error: any) {
+        console.error('❌ Failed to fetch product:', error)
+        toast.error(error.response?.data?.message || 'Failed to load product')
+        router.push('/products')
+      } finally {
+        setLoading(false)
+      }
     }
-  }
 
+    if (slug) {
+      fetchProduct()
+    }
+  }, [slug, router])
+
+  // Handle loading state
   if (loading) {
     return (
       <div className="min-h-screen pt-20 flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-500">Loading products...</p>
+          <p className="mt-4 text-gray-500">Loading product...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Handle product not found
+  if (!product) {
+    return (
+      <div className="min-h-screen pt-20 flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-xl text-gray-600">Product not found</p>
+          <Link href="/products" className="text-blue-600 hover:underline mt-4 inline-block">
+            Back to Products
+          </Link>
         </div>
       </div>
     )
@@ -56,105 +91,145 @@ export default function ProductsPage() {
 
   return (
     <div className="min-h-screen pt-20 bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-        {/* Header */}
-        <div className="text-center mb-8 md:mb-12">
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900 mb-3 md:mb-4">
-            Our Products
-          </h1>
-          <p className="text-gray-600 text-base md:text-lg max-w-2xl mx-auto px-4">
-            Browse our complete range of premium industrial products
-          </p>
-        </div>
-        
-        {products.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No products found</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-            {products.map((product) => (
-              <div 
-                key={product._id} 
-                className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 group"
-              >
-                {/* Product Image */}
-                <div className="relative w-full aspect-square bg-gray-100 overflow-hidden">
-                  {product.images && product.images.length > 0 ? (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Back Button */}
+        <Link
+          href="/products"
+          className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6 transition-colors"
+        >
+          <FaArrowLeft /> Back to Products
+        </Link>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          {/* Product Gallery */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="relative h-96 rounded-2xl overflow-hidden shadow-lg bg-white">
+              {mainImage ? (
+                <Image
+                  src={mainImage}
+                  alt={product.name}
+                  fill
+                  className="object-contain p-4"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  priority
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <span className="text-8xl">🔩</span>
+                </div>
+              )}
+            </div>
+            
+            {/* Thumbnails */}
+            {product.images && product.images.length > 1 && (
+              <div className="mt-4 grid grid-cols-4 gap-3">
+                {product.images.slice(1, 5).map((img, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setMainImage(img)}
+                    className={`relative h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                      mainImage === img 
+                        ? 'border-blue-600 shadow-md' 
+                        : 'border-transparent hover:border-gray-300'
+                    }`}
+                  >
                     <Image
-                      src={product.images[0]}
-                      alt={product.name}
+                      src={img}
+                      alt={`${product.name} ${index + 1}`}
                       fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                      priority={false}
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement
-                        target.style.display = 'none'
-                        const fallback = target.parentElement?.querySelector('.image-fallback')
-                        if (fallback) fallback.classList.remove('hidden')
-                      }}
+                      className="object-contain p-1"
+                      sizes="100px"
                     />
-                  ) : null}
-                  <div className="image-fallback hidden absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100">
-                    <span className="text-6xl">🔩</span>
-                  </div>
-                  
-                  {/* MOQ Badge */}
-                  <div className="absolute top-3 right-3 bg-blue-600 text-white px-3 py-1 rounded-full text-xs md:text-sm font-semibold shadow-lg z-10">
-                    MOQ: {product.moq} KG
-                  </div>
-                  
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3 p-4">
-                    <Link
-                      href={`/products/${product.slug}`}
-                      className="bg-white text-blue-600 px-4 py-2 rounded-lg font-semibold hover:bg-blue-600 hover:text-white transition-colors flex items-center gap-2 text-sm md:text-base"
-                    >
-                      <FaEye className="text-sm" /> View
-                    </Link>
-                    <a
-                      href={`https://wa.me/916261758053?text=I'm%20interested%20in%20${product.name}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="bg-green-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-600 transition-colors flex items-center gap-2 text-sm md:text-base"
-                    >
-                      <FaWhatsapp className="text-sm" /> Order
-                    </a>
-                  </div>
-                </div>
-                
-                {/* Product Info */}
-                <div className="p-4 md:p-5">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-blue-600 font-semibold uppercase tracking-wider">
-                      {product.category}
-                    </span>
-                  </div>
-                  <h3 className="text-base md:text-lg font-bold text-slate-900 mt-1 line-clamp-1">
-                    {product.name}
-                  </h3>
-                  <p className="text-gray-600 text-sm mt-1 line-clamp-2">
-                    {product.description}
-                  </p>
-                  
-                  {/* Quick Action */}
-                  <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-gray-100 flex justify-between items-center">
-                    <span className="text-xs text-gray-500">
-                      {product.features?.length || 0} features
-                    </span>
-                    <Link
-                      href={`/products/${product.slug}`}
-                      className="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center gap-1"
-                    >
-                      Learn More →
-                    </Link>
-                  </div>
-                </div>
+                  </button>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            )}
+          </motion.div>
+
+          {/* Product Details */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <div className="bg-white rounded-2xl p-6 shadow-lg">
+              <div className="mb-4">
+                <span className="text-sm text-blue-600 font-semibold bg-blue-50 px-3 py-1 rounded-full">
+                  {product.category}
+                </span>
+              </div>
+
+              <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">
+                {product.name}
+              </h1>
+              
+              <p className="text-gray-600 text-base mb-4 leading-relaxed">
+                {product.description}
+              </p>
+
+              <div className="flex flex-wrap gap-2 mb-6">
+                <span className="bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-semibold">
+                  MOQ: {product.moq} KG
+                </span>
+                <span className="bg-green-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
+                  In Stock
+                </span>
+              </div>
+
+              {/* Features */}
+              {product.features && product.features.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="font-semibold text-slate-900 mb-2">Key Features</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {product.features.map((feature, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <FaCheck className="text-green-500 text-sm" />
+                        <span className="text-sm text-gray-700">{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Specifications */}
+              {product.specifications && Object.keys(product.specifications).length > 0 && (
+                <div className="mb-6">
+                  <h3 className="font-semibold text-slate-900 mb-2">Specifications</h3>
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-1">
+                    {Object.entries(product.specifications).map(([key, value]) => (
+                      <div key={key} className="flex justify-between text-sm py-1 border-b border-gray-100 last:border-0">
+                        <span className="text-gray-600">{key}</span>
+                        <span className="font-medium text-slate-900">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-4 mt-6">
+                <a
+                  href={`https://wa.me/916261758053?text=I'm%20interested%20in%20${product.name}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 bg-green-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+                >
+                  <FaWhatsapp /> Order via WhatsApp
+                </a>
+                <a
+                  href="tel:+916261758053"
+                  className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <FaPhone style={{ transform: 'scaleX(-1)' }}/> Call Now
+                </a>
+              </div>
+            </div>
+          </motion.div>
+        </div>
       </div>
     </div>
   )

@@ -4,10 +4,19 @@ import bcrypt from 'bcryptjs'
 export interface IUser extends Document {
   name: string
   mobile: string
+  email?: string
   password: string
   role: 'user' | 'admin'
   isVerified: boolean
-  otpVerified?: boolean
+  otpVerified: boolean
+  loginCount: number
+  lastLogin: Date
+  loginHistory: {
+    timestamp: Date
+    ipAddress?: string
+    userAgent?: string
+    device?: string
+  }[]
   comparePassword(candidatePassword: string): Promise<boolean>
 }
 
@@ -24,10 +33,20 @@ const UserSchema = new Schema<IUser>(
       required: [true, 'Mobile number is required'],
       unique: true,
       trim: true,
+      index: true,
+    },
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      // ✅ REMOVE unique: true
+      // ✅ REMOVE sparse: true
+      // Just keep it simple
+      default: undefined,
     },
     password: {
       type: String,
-      required: false, // Changed to false
+      required: false,
       default: ''
     },
     role: {
@@ -42,6 +61,31 @@ const UserSchema = new Schema<IUser>(
     otpVerified: {
       type: Boolean,
       default: false,
+    },
+    loginCount: {
+      type: Number,
+      default: 0,
+    },
+    lastLogin: {
+      type: Date,
+    },
+    loginHistory: {
+      type: [{
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+        ipAddress: {
+          type: String,
+        },
+        userAgent: {
+          type: String,
+        },
+        device: {
+          type: String,
+        },
+      }],
+      default: [],
     },
   },
   {

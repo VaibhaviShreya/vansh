@@ -60,7 +60,7 @@ const CTASection = () => {
                 href="tel:++916261758053"
                 className="block bg-blue-600 hover:bg-blue-700 text-white p-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl"
               >
-                <FaPhone className="text-3xl mx-auto mb-3" />
+                <FaPhone className="text-3xl mx-auto mb-3"  style={{ transform: 'scaleX(-1)' }}/>
                 <h3 className="text-lg font-bold">Call Sales Team</h3>
                 <p className="text-sm">Talk to Expert</p>
               </Link>

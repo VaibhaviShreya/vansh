@@ -14,28 +14,28 @@ import 'swiper/css/navigation'
 const Hero = () => {
  const productImages = [
     { 
-        src: 'https://res.cloudinary.com/ddtwc9qh4/image/upload/v1781565630/WhatsApp_Image_2026-06-13_at_23.38.29_xh55bn.jpg', 
-        alt: 'GI Wire' 
+        src: 'https://res.cloudinary.com/ddtwc9qh4/image/upload/v1781565628/3_ohlqkt.jpg', 
+        alt :'Barbed Wire Rolls',
+        
     },
     { 
         src: 'https://res.cloudinary.com/ddtwc9qh4/image/upload/v1781565629/4_ahrycv.jpg', 
-        alt: 'Barbed Wire' 
+        alt :'Chain Link Fencing Rolls',
+      
     },
     { 
-        src: 'https://res.cloudinary.com/ddtwc9qh4/image/upload/v1781565629/6_w4ss2l.jpg', 
-        alt: 'Chain Link Fencing' 
+        src: 'https://res.cloudinary.com/ddtwc9qh4/image/upload/v1785064842/Nariyal_rassi_ususpt.jpg', 
+        alt: 'Nariyal Rassi',
+    },
+   
+    { 
+        src: 'https://res.cloudinary.com/ddtwc9qh4/image/upload/v1781565628/5_x7pdmc.jpg',
+        alt: 'Nails', 
+      
     },
     { 
-        src: 'https://res.cloudinary.com/ddtwc9qh4/image/upload/v1781565629/7_w4ss2l.jpg', 
-        alt: 'Wire Mesh' 
-    },
-    { 
-        src: 'https://res.cloudinary.com/ddtwc9qh4/image/upload/v1781565628/5_x7pdmc.jpg', 
-        alt: 'Nails' 
-    },
-    { 
-        src: 'https://res.cloudinary.com/ddtwc9qh4/image/upload/v1781565628/3_ohlqkt.jpg', 
-        alt: 'Binding Wire' 
+        src: 'https://res.cloudinary.com/ddtwc9qh4/image/upload/v1785064843/Gi_Reti_jali_vwkefv.jpg', 
+        alt: 'GI Reti Jali',
     },
 ]
 
@@ -157,10 +157,10 @@ const Hero = () => {
               </Link>
               <Link
                 href="tel:+916261758053"
-                className="btn-primary flex items-center gap-2 px-6 py-3"
+                 className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105"
               >
-                <FaPhone size={18} />
-                Call Now
+                <FaPhone size={18} className="flex-shrink-0" style={{ transform: 'scaleX(-1)' }}/>
+                <span>Call Now</span>
               </Link>
             </div>
 

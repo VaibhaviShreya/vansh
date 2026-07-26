@@ -22,15 +22,15 @@ interface AuthContextType {
   logout: () => Promise<void>
   sendOTP: (mobile: string) => Promise<any>
   verifyOTP: (mobile: string, otp: string, name?: string) => Promise<{ token: string; userId: string }>
-  setPassword: (userId: string, password: string) => Promise<{ token: string; user: User }>
+  setPassword: (userId: string, password: string, name?: string) => Promise<{ token: string; user: User }>
   resendOTP: (mobile: string) => Promise<any>
 }
 
 interface RegisterData {
-  name: string
-  mobile: string
+  userId: string
   password: string
-  otp: string
+  verificationToken: string
+  name?: string
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -108,16 +108,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Verify OTP - Now accepts 3 arguments (mobile, otp, name)
+  // Verify OTP
   const verifyOTP = async (mobile: string, otp: string, name?: string) => {
     try {
       console.log(`📤 Verifying OTP for ${mobile}: ${otp}`)
       
-      const response = await axios.post(`${API_URL}/auth/verify-otp`, {
-        mobile,
-        otp,
-        name: name || 'User' // Send name if available
-      })
+      const response = await axios.post(
+        `${API_URL}/auth/verify-otp`,
+        {
+          mobile,
+          otp,
+          name: name || 'User'
+        }
+      )
       
       console.log('✅ Verify OTP Response:', response.data)
       
@@ -143,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Resend OTP
+  // Resend OTP - FIXED
   const resendOTP = async (mobile: string) => {
     try {
       console.log(`📤 Resending OTP to: ${API_URL}/auth/resend-otp`)
@@ -164,24 +167,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Set password
-  const setPassword = async (userId: string, password: string) => {
+  // Set Password (Complete Registration)
+  const setPassword = async (userId: string, password: string, name?: string) => {
     try {
       console.log(`📤 Setting password for user: ${userId}`)
       
-      const response = await axios.post(`${API_URL}/auth/set-password`, {
-        userId,
-        password
-      })
+      const response = await axios.post(
+        `${API_URL}/auth/set-password`,
+        {
+          userId,
+          password,
+          name
+        }
+      )
       
       console.log('✅ Set Password Response:', response.data)
       
       if (!response.data.success) {
         throw new Error(response.data.message || 'Failed to set password')
-      }
-      
-      if (!response.data.token || !response.data.user) {
-        throw new Error('Invalid response from server')
       }
       
       return response.data
@@ -193,15 +196,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Register - FIXED
+  const register = async (data: RegisterData) => {
+    try {
+      console.log(`📤 Registering user: ${data.userId}`)
+      
+      const response = await axios.post(
+        `${API_URL}/auth/set-password`,
+        {
+          userId: data.userId,
+          password: data.password,
+          name: data.name || ''
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${data.verificationToken}`
+          }
+        }
+      )
+      
+      console.log('✅ Registration Response:', response.data)
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Registration failed')
+      }
+      
+      // Save token and user data
+      localStorage.setItem('token', response.data.token)
+      localStorage.setItem('user', JSON.stringify(response.data.user))
+      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`
+      setUser(response.data.user)
+      
+      toast.success('Registration successful!')
+      router.push('/dashboard')
+      
+      return response.data
+    } catch (error: any) {
+      console.error('❌ Registration error:', error)
+      const errorMessage = error.response?.data?.message || error.message || 'Registration failed'
+      toast.error(errorMessage)
+      throw error
+    }
+  }
+
   // Login
   const login = async (mobile: string, password: string) => {
     try {
       console.log(`📤 Logging in: ${mobile}`)
       
-      const response = await axios.post(`${API_URL}/auth/login`, {
-        mobile,
-        password
-      })
+      const response = await axios.post(
+        `${API_URL}/auth/login`,
+        {
+          mobile,
+          password
+        }
+      )
       
       console.log('✅ Login Response:', response.data)
       
@@ -220,37 +269,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error: any) {
       console.error('❌ Login error:', error)
       const errorMessage = error.response?.data?.message || 'Login failed'
-      toast.error(errorMessage)
-      throw error
-    }
-  }
-
-  // Register
-  const register = async (data: RegisterData) => {
-    try {
-      console.log(`📤 Registering user: ${data.mobile}`)
-      
-      // Step 1: Verify OTP with name
-      const verifyResult = await verifyOTP(data.mobile, data.otp, data.name)
-      
-      if (!verifyResult.userId) {
-        throw new Error('OTP verification failed')
-      }
-      
-      // Step 2: Set password
-      const result = await setPassword(verifyResult.userId, data.password)
-      
-      // Step 3: Save user data
-      localStorage.setItem('token', result.token)
-      localStorage.setItem('user', JSON.stringify(result.user))
-      axios.defaults.headers.common['Authorization'] = `Bearer ${result.token}`
-      setUser(result.user)
-      
-      toast.success('Registration successful!')
-      router.push('/dashboard')
-    } catch (error: any) {
-      console.error('❌ Registration error:', error)
-      const errorMessage = error.response?.data?.message || error.message || 'Registration failed'
       toast.error(errorMessage)
       throw error
     }
@@ -276,7 +294,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sendOTP,
     verifyOTP,
     setPassword,
-    resendOTP,
+    resendOTP, // ✅ Added resendOTP here
   }
 
   return (

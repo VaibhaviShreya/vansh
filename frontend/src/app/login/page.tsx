@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { FaEnvelope, FaLock, FaArrowRight } from 'react-icons/fa'
+import { FaPhone, FaLock, FaArrowRight, FaSpinner } from 'react-icons/fa'
 import { useAuth } from '@/hooks/useAuth'
 import toast from 'react-hot-toast'
 
@@ -26,9 +26,11 @@ export default function LoginPage() {
     setIsLoading(true)
     try {
       await login(mobile, password)
-      router.push('/dashboard')
-    } catch (error) {
-      // Error is handled in the auth hook
+      // User will be redirected to dashboard by the auth hook
+      // The user is automatically created/updated in MongoDB
+    } catch (error: any) {
+      console.error('Login error:', error)
+      // Error handled in hook
     } finally {
       setIsLoading(false)
     }
@@ -43,6 +45,9 @@ export default function LoginPage() {
         className="bg-white rounded-2xl shadow-xl max-w-md w-full p-8"
       >
         <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+            <FaPhone className="text-2xl text-blue-600"style={{ transform: 'scaleX(-1)' }} />
+          </div>
           <h1 className="text-3xl font-bold text-slate-900">Welcome Back</h1>
           <p className="text-gray-600 mt-2">Sign in to your account</p>
         </div>
@@ -53,14 +58,16 @@ export default function LoginPage() {
               Mobile Number
             </label>
             <div className="relative">
-              <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"  style={{ transform: 'scaleX(-1)' }}/>
               <input
                 type="tel"
                 value={mobile}
                 onChange={(e) => setMobile(e.target.value)}
-                placeholder="Enter your mobile number"
+                placeholder="Enter 10-digit mobile number"
+                maxLength={10}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
+                disabled={isLoading}
               />
             </div>
           </div>
@@ -78,17 +85,9 @@ export default function LoginPage() {
                 placeholder="Enter your password"
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
+                disabled={isLoading}
               />
             </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <Link
-              href="/forgot-password"
-              className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
-            >
-              Forgot Password?
-            </Link>
           </div>
 
           <button
@@ -97,7 +96,9 @@ export default function LoginPage() {
             className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isLoading ? (
-              <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+              <>
+                <FaSpinner className="animate-spin" /> Signing in...
+              </>
             ) : (
               <>
                 Sign In
