@@ -1,8 +1,13 @@
-import path from 'node:path'
-import type { NextConfig } from 'next'
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   images: {
+    domains: [
+      'localhost',
+      'res.cloudinary.com',  // ✅ Add this
+      'images.unsplash.com',
+      'via.placeholder.com',
+      'picsum.photos'
+    ],
     remotePatterns: [
       {
         protocol: 'https',
@@ -14,13 +19,6 @@ const nextConfig: NextConfig = {
         hostname: 'images.unsplash.com',
         pathname: '/**',
       },
-      // Add placeholder.com for fallback images
-      {
-        protocol: 'https',
-        hostname: 'via.placeholder.com',
-        pathname: '/**',
-      },
-      // Add picsum.photos as well (if used)
       {
         protocol: 'https',
         hostname: 'picsum.photos',
@@ -28,16 +26,18 @@ const nextConfig: NextConfig = {
       },
     ],
     formats: ['image/avif', 'image/webp'],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 60,
   },
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
+  swcMinify: true,
+  // Add this for better image optimization
   experimental: {
     optimizeCss: true,
   },
-  turbopack: {
-    root: path.resolve(__dirname),
-  },
 }
 
-export default nextConfig
+module.exports = nextConfig

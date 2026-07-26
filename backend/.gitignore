@@ -1,22 +1,19 @@
-# Next.js
-.next/
-out/
-dist/
-
 # Node modules
 node_modules/
 package-lock.json
+
+# Build
+dist/
+build/
 
 # Environment
 .env
 .env.*
 !.env.example
 
-# Build
-build/
-
 # Logs
 *.log
+npm-debug.log*
 
 # OS
 .DS_Store
