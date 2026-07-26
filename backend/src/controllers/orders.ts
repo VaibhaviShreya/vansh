@@ -1,10 +1,16 @@
 import { Request, Response } from 'express'
 import { Order } from '../models/Order'
 import { Product } from '../models/Product'
+import { sendOrderConfirmationEmail } from '../services/email'
 
 export const createOrder = async (req: any, res: Response) => {
   try {
-    const { productId, quantity, companyName, city, message, mobile, name } = req.body
+    const { productId, quantity, companyName, city, message, mobile, phone, email, name } = req.body
+    const phoneNumber = mobile || phone
+
+    if (!name || !phoneNumber || !email || !companyName || !city) {
+      return res.status(400).json({ message: 'Name, email, phone number, company name, and city are required' })
+    }
 
     // Validate product
     const product = await Product.findById(productId)
@@ -24,12 +30,17 @@ export const createOrder = async (req: any, res: Response) => {
       companyName,
       city,
       message,
-      mobile,
+      mobile: phoneNumber,
+      email,
       name,
       status: 'pending'
     })
 
     await order.save()
+
+    sendOrderConfirmationEmail(email, {
+      orderNumber: order._id.toString(), productName: product.name, quantity, companyName, city,
+    }, name).catch((emailError) => console.error('Order email error:', emailError))
 
     res.status(201).json({
       success: true,
@@ -50,7 +61,7 @@ export const getOrders = async (req: Request, res: Response) => {
     if (status) query.status = status
 
     const orders = await Order.find(query)
-      .populate('userId', 'name mobile')
+      .populate('userId', 'name mobile email')
       .populate('productId', 'name slug')
       .sort({ createdAt: -1 })
       .limit(Number(limit))
@@ -74,7 +85,7 @@ export const getOrderById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
     const order = await Order.findById(id)
-      .populate('userId', 'name mobile')
+      .populate('userId', 'name mobile email')
       .populate('productId', 'name slug images')
 
     if (!order) {

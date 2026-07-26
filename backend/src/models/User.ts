@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 export interface IUser extends Document {
   name: string
   mobile: string
+  email?: string
   password: string
   role: 'user' | 'admin'
   isVerified: boolean
@@ -23,9 +24,15 @@ const UserSchema = new Schema<IUser>(
       unique: true,
       trim: true,
     },
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email address'],
+    },
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      required: false,
       minlength: [6, 'Password must be at least 6 characters'],
     },
     role: {
@@ -43,16 +50,13 @@ const UserSchema = new Schema<IUser>(
   }
 )
 
-// Hash password before saving
 UserSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next()
-  
   const salt = await bcrypt.genSalt(10)
   this.password = await bcrypt.hash(this.password, salt)
   next()
 })
 
-// Compare password method
 UserSchema.methods.comparePassword = async function (
   candidatePassword: string
 ): Promise<boolean> {

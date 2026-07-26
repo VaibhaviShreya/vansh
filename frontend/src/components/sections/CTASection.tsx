@@ -28,7 +28,7 @@ const CTASection = () => {
               transition={{ duration: 0.2 }}
             >
               <Link
-                href="https://wa.me/919XXXXXXXXX"
+                href="https://wa.me/+916261758053"
                 target="_blank"
                 className="block bg-green-500 hover:bg-green-600 text-white p-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl"
               >
@@ -57,7 +57,7 @@ const CTASection = () => {
               transition={{ duration: 0.2 }}
             >
               <Link
-                href="tel:+919XXXXXXXXX"
+                href="tel:++916261758053"
                 className="block bg-blue-600 hover:bg-blue-700 text-white p-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl"
               >
                 <FaPhone className="text-3xl mx-auto mb-3" />

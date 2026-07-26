@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
+    "dev:no-turbo": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -13,9 +14,11 @@
     "@types/bcryptjs": "^2.4.6",
     "axios": "^1.18.0",
     "bcryptjs": "^3.0.3",
+    "critters": "^0.0.23",
     "framer-motion": "^12.40.0",
     "jsonwebtoken": "^9.0.3",
     "next": "16.2.9",
+    "next-cloudinary": "^6.17.5",
     "next-seo": "^7.2.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",

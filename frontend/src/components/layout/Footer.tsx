@@ -115,8 +115,8 @@ const Footer = () => {
               </div>
               <div className="flex items-center space-x-3">
                 <FaPhone className="text-primary-blue" />
-                <a href="tel:+919XXXXXXXXX" className="text-gray-400 hover:text-primary-blue transition-colors">
-                  +91 9XXXXXXXXX
+                <a href="tel:++916261758053" className="text-gray-400 hover:text-primary-blue transition-colors">
+                  +916261758053
                 </a>
               </div>
               <div className="flex items-center space-x-3">
@@ -127,7 +127,7 @@ const Footer = () => {
               </div>
               <div className="flex items-center space-x-3">
                 <FaWhatsapp className="text-green-500" />
-                <a href="https://wa.me/919XXXXXXXXX" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary-blue transition-colors">
+                <a href="https://wa.me/+916261758053" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary-blue transition-colors">
                   WhatsApp
                 </a>
               </div>

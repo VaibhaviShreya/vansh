@@ -1,15 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import Image from 'next/image'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
-import { FaWhatsapp, FaPhone, FaCheck, FaArrowLeft } from 'react-icons/fa'
-import { useAuth } from '@/hooks/useAuth'
-import toast from 'react-hot-toast'
+import Image from 'next/image'
+import { FaWhatsapp, FaEye } from 'react-icons/fa'
 import axios from 'axios'
+import toast from 'react-hot-toast'
 
+// Complete Product interface
 interface Product {
   _id: string
   name: string
@@ -18,262 +16,145 @@ interface Product {
   images: string[]
   category: string
   moq: number
-  specifications: Record<string, string>
-  features: string[]
+  features?: string[]  // Optional features
+  specifications?: Record<string, string>
 }
 
-export default function ProductDetailsPage() {
-  const { slug } = useParams()
-  const router = useRouter()
-  const { isAuthenticated } = useAuth()
-  const [product, setProduct] = useState<Product | null>(null)
+export default function ProductsPage() {
+  const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
-  const [orderForm, setOrderForm] = useState({
-    name: '',
-    mobile: '',
-    company: '',
-    quantity: '500',
-    city: '',
-    message: '',
-  })
 
-  // Check authentication
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
   useEffect(() => {
-    if (!isAuthenticated) {
-      toast.error('Please login to view product details')
-      router.push(`/login?redirect=/products/${slug}`)
-      return
-    }
-  }, [isAuthenticated, router, slug])
+    fetchProducts()
+  }, [])
 
-  // Fetch product data
-  useEffect(() => {
-    const fetchProduct = async () => {
-      try {
-        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/products/${slug}`)
-        setProduct(response.data)
-      } catch (error) {
-        console.error('Failed to fetch product:', error)
-        // Fallback data
-        setProduct({
-          _id: '1',
-          name: slug?.toString().replace(/-/g, ' ') || 'Product',
-          slug: slug?.toString() || '',
-          description: 'Premium quality product for industrial use',
-          images: [],
-          category: 'Industrial',
-          moq: 500,
-          specifications: {
-            'Material': 'High Quality',
-            'Finish': 'Standard',
-          },
-          features: ['Durable', 'High Quality', 'Bulk Supply Available'],
-        })
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (isAuthenticated) {
-      fetchProduct()
-    }
-  }, [slug, isAuthenticated])
-
-  const handleOrderSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (parseInt(orderForm.quantity) < 500) {
-      toast.error('Minimum order quantity is 500 KG')
-      return
-    }
-
+  const fetchProducts = async () => {
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/orders`, {
-        ...orderForm,
-        productId: product?._id,
-      })
-      toast.success('Order placed successfully!')
-      
-      // WhatsApp message
-      const message = `Order: ${product?.name}\nQuantity: ${orderForm.quantity} KG\nCompany: ${orderForm.company}\nCity: ${orderForm.city}`
-      window.open(`https://wa.me/919XXXXXXXXX?text=${encodeURIComponent(message)}`, '_blank')
+      const response = await axios.get(`${API_URL}/products`)
+      console.log('Products response:', response.data)
+      setProducts(response.data.products || [])
     } catch (error) {
-      toast.error('Failed to place order')
+      console.error('Failed to fetch products:', error)
+      toast.error('Failed to load products')
+    } finally {
+      setLoading(false)
     }
-  }
-
-  if (!isAuthenticated) {
-    return null // Will redirect
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen pt-20 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-600"></div>
-      </div>
-    )
-  }
-
-  if (!product) {
-    return (
-      <div className="min-h-screen pt-20 flex items-center justify-center">
-        <p className="text-xl text-gray-600">Product not found</p>
+      <div className="min-h-screen pt-20 flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-500">Loading products...</p>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="min-h-screen pt-20 bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Back Button */}
-        <Link
-          href="/products"
-          className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6"
-        >
-          <FaArrowLeft /> Back to Products
-        </Link>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Product Gallery */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="relative h-96 rounded-2xl overflow-hidden shadow-lg bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
-              <div className="text-8xl">🔩</div>
-            </div>
-            <div className="mt-4 grid grid-cols-4 gap-4">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="relative h-20 rounded-lg overflow-hidden bg-gray-200 flex items-center justify-center">
-                  <span className="text-2xl">🔩</span>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Product Details */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            <h1 className="text-4xl font-bold text-slate-900 mb-2">{product.name}</h1>
-            <p className="text-gray-600 text-lg mb-4">{product.description}</p>
-
-            <div className="flex flex-wrap gap-2 mb-6">
-              <span className="bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-semibold">
-                MOQ: {product.moq} KG
-              </span>
-              <span className="bg-green-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
-                In Stock
-              </span>
-            </div>
-
-            {/* Specifications */}
-            <div className="bg-white rounded-xl p-6 shadow-md mb-6">
-              <h3 className="text-lg font-bold text-slate-900 mb-4">Specifications</h3>
-              <div className="space-y-2">
-                {Object.entries(product.specifications || {}).map(([key, value]) => (
-                  <div key={key} className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-600">{key}</span>
-                    <span className="font-medium text-slate-900">{value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Features */}
-            <div className="space-y-2 mb-6">
-              {(product.features || ['Premium Quality', 'Bulk Supply Available', 'Pan India Delivery']).map(
-                (feature, index) => (
-                  <div key={index} className="flex items-center gap-3">
-                    <FaCheck className="text-green-500" />
-                    <span className="text-gray-700">{feature}</span>
-                  </div>
-                )
-              )}
-            </div>
-
-            {/* Order Form */}
-            <form onSubmit={handleOrderSubmit} className="space-y-4 bg-white p-6 rounded-xl shadow-md">
-              <h3 className="text-xl font-bold text-slate-900">Place Your Order</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  placeholder="Your Name *"
-                  required
-                  value={orderForm.name}
-                  onChange={(e) => setOrderForm({ ...orderForm, name: e.target.value })}
-                  className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <input
-                  type="tel"
-                  placeholder="Mobile Number *"
-                  required
-                  value={orderForm.mobile}
-                  onChange={(e) => setOrderForm({ ...orderForm, mobile: e.target.value })}
-                  className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <input
-                  type="text"
-                  placeholder="Company Name"
-                  value={orderForm.company}
-                  onChange={(e) => setOrderForm({ ...orderForm, company: e.target.value })}
-                  className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <input
-                  type="number"
-                  placeholder="Quantity (KG) *"
-                  required
-                  min="500"
-                  value={orderForm.quantity}
-                  onChange={(e) => setOrderForm({ ...orderForm, quantity: e.target.value })}
-                  className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <input
-                type="text"
-                placeholder="City *"
-                required
-                value={orderForm.city}
-                onChange={(e) => setOrderForm({ ...orderForm, city: e.target.value })}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <textarea
-                placeholder="Message (Optional)"
-                rows={3}
-                value={orderForm.message}
-                onChange={(e) => setOrderForm({ ...orderForm, message: e.target.value })}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-
-              <div className="flex flex-wrap gap-4">
-                <button type="submit" className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all duration-300">
-                  Place Order
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const message = `Order: ${product.name}\nQuantity: ${orderForm.quantity} KG\nCompany: ${orderForm.company}\nCity: ${orderForm.city}`
-                    window.open(`https://wa.me/919XXXXXXXXX?text=${encodeURIComponent(message)}`, '_blank')
-                  }}
-                  className="bg-green-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-600 transition-all duration-300 flex items-center gap-2"
-                >
-                  <FaWhatsapp /> WhatsApp Order
-                </button>
-                <button
-                  type="button"
-                  onClick={() => window.open('tel:+919XXXXXXXXX')}
-                  className="border-2 border-blue-600 text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-600 hover:text-white transition-all duration-300 flex items-center gap-2"
-                >
-                  <FaPhone /> Call Sales
-                </button>
-              </div>
-            </form>
-          </motion.div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        {/* Header */}
+        <div className="text-center mb-8 md:mb-12">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900 mb-3 md:mb-4">
+            Our Products
+          </h1>
+          <p className="text-gray-600 text-base md:text-lg max-w-2xl mx-auto px-4">
+            Browse our complete range of premium industrial products
+          </p>
         </div>
+        
+        {products.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500 text-lg">No products found</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+            {products.map((product) => (
+              <div 
+                key={product._id} 
+                className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 group"
+              >
+                {/* Product Image */}
+                <div className="relative w-full aspect-square bg-gray-100 overflow-hidden">
+                  {product.images && product.images.length > 0 ? (
+                    <Image
+                      src={product.images[0]}
+                      alt={product.name}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                      priority={false}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        target.style.display = 'none'
+                        const fallback = target.parentElement?.querySelector('.image-fallback')
+                        if (fallback) fallback.classList.remove('hidden')
+                      }}
+                    />
+                  ) : null}
+                  <div className="image-fallback hidden absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100">
+                    <span className="text-6xl">🔩</span>
+                  </div>
+                  
+                  {/* MOQ Badge */}
+                  <div className="absolute top-3 right-3 bg-blue-600 text-white px-3 py-1 rounded-full text-xs md:text-sm font-semibold shadow-lg z-10">
+                    MOQ: {product.moq} KG
+                  </div>
+                  
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3 p-4">
+                    <Link
+                      href={`/products/${product.slug}`}
+                      className="bg-white text-blue-600 px-4 py-2 rounded-lg font-semibold hover:bg-blue-600 hover:text-white transition-colors flex items-center gap-2 text-sm md:text-base"
+                    >
+                      <FaEye className="text-sm" /> View
+                    </Link>
+                    <a
+                      href={`https://wa.me/916261758053?text=I'm%20interested%20in%20${product.name}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-green-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-600 transition-colors flex items-center gap-2 text-sm md:text-base"
+                    >
+                      <FaWhatsapp className="text-sm" /> Order
+                    </a>
+                  </div>
+                </div>
+                
+                {/* Product Info */}
+                <div className="p-4 md:p-5">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-blue-600 font-semibold uppercase tracking-wider">
+                      {product.category}
+                    </span>
+                  </div>
+                  <h3 className="text-base md:text-lg font-bold text-slate-900 mt-1 line-clamp-1">
+                    {product.name}
+                  </h3>
+                  <p className="text-gray-600 text-sm mt-1 line-clamp-2">
+                    {product.description}
+                  </p>
+                  
+                  {/* Quick Action */}
+                  <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-gray-100 flex justify-between items-center">
+                    <span className="text-xs text-gray-500">
+                      {product.features?.length || 0} features
+                    </span>
+                    <Link
+                      href={`/products/${product.slug}`}
+                      className="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center gap-1"
+                    >
+                      Learn More →
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

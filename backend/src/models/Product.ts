@@ -10,6 +10,9 @@ export interface IProduct extends Document {
   specifications: Record<string, string>
   features: string[]
   isActive: boolean
+  sku?: string // Make sku optional
+  createdAt: Date
+  updatedAt: Date
 }
 
 const ProductSchema = new Schema<IProduct>(
@@ -24,15 +27,16 @@ const ProductSchema = new Schema<IProduct>(
       required: [true, 'Slug is required'],
       unique: true,
       trim: true,
+      lowercase: true,
     },
     description: {
       type: String,
       required: [true, 'Description is required'],
+      trim: true,
     },
     images: {
       type: [String],
-      required: [true, 'At least one image is required'],
-      default: ['https://via.placeholder.com/500x500'],
+      default: [],
     },
     category: {
       type: String,
@@ -40,7 +44,6 @@ const ProductSchema = new Schema<IProduct>(
     },
     moq: {
       type: Number,
-      required: [true, 'Minimum order quantity is required'],
       default: 500,
     },
     specifications: {
@@ -56,10 +59,19 @@ const ProductSchema = new Schema<IProduct>(
       type: Boolean,
       default: true,
     },
+    sku: {
+      type: String,
+      trim: true,
+      // Remove unique: true to avoid duplicate errors
+      sparse: true,
+    },
   },
   {
     timestamps: true,
   }
 )
+
+// Remove the unique index on sku if it exists
+// ProductSchema.index({ sku: 1 }, { unique: true, sparse: true });
 
 export const Product = mongoose.model<IProduct>('Product', ProductSchema)

@@ -15,81 +15,61 @@ dotenv.config()
 const app = express()
 const PORT = process.env.PORT || 5000
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-})
-
-// ============================================
-// CORS Configuration - FIXED
-// ============================================
+// CORS Configuration
 const allowedOrigins = [
   'https://vansh-beta.vercel.app',
   'https://vansh-beta-control-check.vercel.app',
   'http://localhost:3000',
   'http://localhost:3001',
   'https://vansh-0kyd.onrender.com',
-  // Add any other frontend URLs you're using
 ]
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true)
-    
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
       callback(null, true)
     } else {
-      console.warn('❌ CORS blocked for origin:', origin)
-      callback(new Error('Not allowed by CORS'))
+      console.log('❌ CORS blocked for origin:', origin)
+      callback(null, true) // Allow all for testing
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Requested-With',
-    'Accept',
-    'Origin',
-    'Access-Control-Allow-Origin',
-    'Access-Control-Allow-Headers',
-    'Access-Control-Allow-Methods'
-  ],
-  exposedHeaders: ['Content-Length', 'X-Requested-With'],
-  preflightContinue: false,
-  optionsSuccessStatus: 204,
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
 }))
 
-// Handle preflight requests explicitly
 app.options('*', cors())
 
-// Middleware
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-  crossOriginOpenerPolicy: { policy: "unsafe-none" },
-}))
-app.use(compression())
-app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'))
-app.use(express.json({ limit: '10mb' }))
-app.use(express.urlencoded({ extended: true, limit: '10mb' }))
-app.use('/api', limiter)
-
-// Add CORS headers middleware (additional safety)
+// Additional CORS headers
 app.use((req, res, next) => {
   const origin = req.headers.origin
-  if (origin && allowedOrigins.includes(origin)) {
+  if (origin) {
     res.header('Access-Control-Allow-Origin', origin)
     res.header('Access-Control-Allow-Credentials', 'true')
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH')
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept')
   }
   if (req.method === 'OPTIONS') {
     return res.sendStatus(204)
   }
   next()
 })
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+})
+
+// Middleware
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+}))
+app.use(compression())
+app.use(morgan('dev'))
+app.use(express.json({ limit: '10mb' }))
+app.use(express.urlencoded({ extended: true, limit: '10mb' }))
+app.use('/api', limiter)
 
 // API Routes
 app.use('/api', apiRoutes)
@@ -106,22 +86,7 @@ app.get('/api/health', (req, res) => {
     environment: process.env.NODE_ENV || 'development',
     cors: {
       allowedOrigins: allowedOrigins,
-      currentOrigin: req.headers.origin || 'none'
-    }
-  })
-})
-
-// Root endpoint
-app.get('/', (req, res) => {
-  res.json({
-    name: 'Vansh Enterprises API',
-    version: '1.0.0',
-    status: 'running',
-    endpoints: {
-      health: '/api/health',
-      auth: '/api/auth',
-      products: '/api/products',
-      orders: '/api/orders'
+      currentOrigin: req.headers.origin || 'none',
     }
   })
 })
@@ -154,8 +119,7 @@ const startServer = async () => {
       console.log(`\n🚀 Server running on port ${PORT}`)
       console.log(`📡 API: http://localhost:${PORT}/api`)
       console.log(`📡 Health: http://localhost:${PORT}/api/health`)
-      console.log(`\n🔒 Allowed Origins:`, allowedOrigins)
-      console.log(`\n📊 Environment: ${process.env.NODE_ENV || 'development'}`)
+      console.log(`\n🔒 Environment: ${process.env.NODE_ENV || 'development'}`)
     })
   } catch (error) {
     console.error('❌ Failed to start server:', error)

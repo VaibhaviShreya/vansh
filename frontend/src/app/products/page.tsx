@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { motion } from 'framer-motion'
-import { FaSearch, FaEye, FaWhatsapp } from 'react-icons/fa'
+import { FaWhatsapp, FaEye } from 'react-icons/fa'
 import axios from 'axios'
+import toast from 'react-hot-toast'
 
-interface Product {
+ interface Product {
   _id: string
   name: string
   slug: string
@@ -15,13 +15,18 @@ interface Product {
   images: string[]
   category: string
   moq: number
+  specifications: Record<string, string>
+  features: string[]
+  isActive?: boolean
+  createdAt?: string
+  updatedAt?: string
 }
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('')
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
 
   useEffect(() => {
     fetchProducts()
@@ -29,176 +34,126 @@ export default function ProductsPage() {
 
   const fetchProducts = async () => {
     try {
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/products`)
-      setProducts(response.data.products || response.data)
+      const response = await axios.get(`${API_URL}/products`)
+      console.log('Products response:', response.data)
+      setProducts(response.data.products || [])
     } catch (error) {
       console.error('Failed to fetch products:', error)
-      // Use fallback data
-      setProducts([
-        {
-          _id: '1',
-          name: 'GI Wire',
-          slug: 'gi-wire',
-          description: 'High-quality galvanized iron wire for construction',
-          images: ['/images/gi-wire.jpg'],
-          category: 'Wire',
-          moq: 500,
-        },
-        {
-          _id: '2',
-          name: 'Barbed Wire',
-          slug: 'barbed-wire',
-          description: 'Durable barbed wire for security fencing',
-          images: ['/images/barbed-wire.jpg'],
-          category: 'Fencing',
-          moq: 500,
-        },
-        {
-          _id: '3',
-          name: 'Chain Link Fencing',
-          slug: 'chain-link-fencing',
-          description: 'Strong chain link fencing for industrial use',
-          images: ['/images/chain-link.jpg'],
-          category: 'Fencing',
-          moq: 500,
-        },
-        {
-          _id: '4',
-          name: 'Wire Mesh',
-          slug: 'wire-mesh',
-          description: 'Versatile wire mesh for construction applications',
-          images: ['/images/wire-mesh.jpg'],
-          category: 'Mesh',
-          moq: 500,
-        },
-        {
-          _id: '5',
-          name: 'Nails',
-          slug: 'nails',
-          description: 'Premium quality nails for construction',
-          images: ['/images/nails.jpg'],
-          category: 'Hardware',
-          moq: 500,
-        },
-        {
-          _id: '6',
-          name: 'Binding Wire',
-          slug: 'binding-wire',
-          description: 'Flexible binding wire for construction',
-          images: ['/images/binding-wire.jpg'],
-          category: 'Wire',
-          moq: 500,
-        },
-      ])
+      toast.error('Failed to load products')
     } finally {
       setLoading(false)
     }
   }
 
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.description.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCategory = !selectedCategory || product.category === selectedCategory
-    return matchesSearch && matchesCategory
-  })
-
-  const categories = Array.from(new Set(products.map(p => p.category)))
-
   if (loading) {
     return (
-      <div className="min-h-screen pt-20 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen pt-20 flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-500">Loading products...</p>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="min-h-screen pt-20 bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="mb-8"
-        >
-          <h1 className="text-4xl font-bold text-slate-900 mb-4">Our Products</h1>
-          <p className="text-gray-600">Browse our complete range of premium industrial products</p>
-        </motion.div>
-
-        {/* Search and Filter */}
-        <div className="flex flex-col md:flex-row gap-4 mb-8">
-          <div className="flex-1 relative">
-            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search products..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-          >
-            <option value="">All Categories</option>
-            {categories.map((category) => (
-              <option key={category} value={category}>{category}</option>
-            ))}
-          </select>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        {/* Header - Added better padding and spacing */}
+        <div className="text-center mb-8 md:mb-12">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900 mb-3 md:mb-4">
+            Our Products
+          </h1>
+          <p className="text-gray-600 text-base md:text-lg max-w-2xl mx-auto px-4">
+            Browse our complete range of premium industrial products
+          </p>
         </div>
-
-        {/* Products Grid */}
-        {filteredProducts.length === 0 ? (
+        
+        {products.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-500 text-lg">No products found</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredProducts.map((product, index) => (
-              <motion.div
-                key={product._id}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.05 }}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+            {products.map((product) => (
+              <div 
+                key={product._id} 
                 className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 group"
               >
-                <div className="relative h-48 bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
-                  <div className="text-6xl">🔩</div>
-                  <div className="absolute top-4 right-4 bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                {/* Product Image - Fixed aspect ratio */}
+                <div className="relative w-full aspect-square bg-gray-100 overflow-hidden">
+                  {product.images && product.images.length > 0 ? (
+                    <Image
+                      src={product.images[0]}
+                      alt={product.name}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                      priority={false}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        target.style.display = 'none'
+                        const fallback = target.parentElement?.querySelector('.image-fallback')
+                        if (fallback) fallback.classList.remove('hidden')
+                      }}
+                    />
+                  ) : null}
+                  <div className="image-fallback hidden absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100">
+                    <span className="text-6xl">🔩</span>
+                  </div>
+                  
+                  {/* MOQ Badge - Fixed position and styling */}
+                  <div className="absolute top-3 right-3 bg-blue-600 text-white px-3 py-1 rounded-full text-xs md:text-sm font-semibold shadow-lg z-10">
                     MOQ: {product.moq} KG
                   </div>
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-4">
+                  
+                  {/* Hover Overlay - Better button styling */}
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3 p-4">
                     <Link
                       href={`/products/${product.slug}`}
-                      className="bg-white text-blue-600 px-4 py-2 rounded-lg font-semibold hover:bg-blue-600 hover:text-white transition-colors flex items-center gap-2"
+                      className="bg-white text-blue-600 px-4 py-2 rounded-lg font-semibold hover:bg-blue-600 hover:text-white transition-colors flex items-center gap-2 text-sm md:text-base"
                     >
-                      <FaEye /> View
+                      <FaEye className="text-sm" /> View
                     </Link>
                     <a
-                      href={`https://wa.me/919XXXXXXXXX?text=I'm%20interested%20in%20${product.name}`}
+                      href={`https://wa.me/916261758053?text=I'm%20interested%20in%20${product.name}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="bg-green-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-600 transition-colors flex items-center gap-2"
+                      className="bg-green-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-600 transition-colors flex items-center gap-2 text-sm md:text-base"
                     >
-                      <FaWhatsapp /> Order
+                      <FaWhatsapp className="text-sm" /> Order
                     </a>
                   </div>
                 </div>
-                <div className="p-4">
-                  <div className="text-sm text-blue-600 font-semibold mb-1">
-                    {product.category}
+                
+                {/* Product Info - Better spacing */}
+                <div className="p-4 md:p-5">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-blue-600 font-semibold uppercase tracking-wider">
+                      {product.category}
+                    </span>
                   </div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-2">
+                  <h3 className="text-base md:text-lg font-bold text-slate-900 mt-1 line-clamp-1">
                     {product.name}
                   </h3>
-                  <p className="text-gray-600 text-sm line-clamp-2">
+                  <p className="text-gray-600 text-sm mt-1 line-clamp-2">
                     {product.description}
                   </p>
+                  
+                  {/* Quick Action */}
+                  <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-gray-100 flex justify-between items-center">
+                    <span className="text-xs text-gray-500">
+                      {product.features?.length || 0} features
+                    </span>
+                    <Link
+                      href={`/products/${product.slug}`}
+                      className="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center gap-1"
+                    >
+                      Learn More →
+                    </Link>
+                  </div>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         )}

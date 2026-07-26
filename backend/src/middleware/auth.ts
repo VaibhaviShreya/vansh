@@ -2,12 +2,16 @@ import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import { User } from '../models/User'
 
-export interface AuthRequest extends Request {
-  user?: any
+declare global {
+  namespace Express {
+    interface Request {
+      user?: any
+    }
+  }
 }
 
 export const protect = async (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {
@@ -44,7 +48,7 @@ export const protect = async (
   }
 }
 
-export const admin = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const admin = (req: Request, res: Response, next: NextFunction) => {
   if (req.user && req.user.role === 'admin') {
     next()
   } else {

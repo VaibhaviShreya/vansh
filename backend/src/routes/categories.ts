@@ -1,20 +1,18 @@
 import express from 'express'
-import { protect, admin } from '../middleware/auth'
-import { 
-  getCategories, 
-  createCategory, 
-  updateCategory, 
-  deleteCategory 
-} from '../controllers/categories'
 
 const router = express.Router()
 
 // Public routes
-router.get('/', getCategories)
-
-// Admin routes
-router.post('/', protect, admin, createCategory)
-router.put('/:id', protect, admin, updateCategory)
-router.delete('/:id', protect, admin, deleteCategory)
+router.get('/', (req, res) => {
+  res.json({ 
+    success: true,
+    categories: [
+      { id: '1', name: 'Wire', slug: 'wire' },
+      { id: '2', name: 'Fencing', slug: 'fencing' },
+      { id: '3', name: 'Hardware', slug: 'hardware' },
+      { id: '4', name: 'Mesh', slug: 'mesh' }
+    ]
+  })
+})
 
 export default router

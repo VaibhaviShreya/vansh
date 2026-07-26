@@ -119,7 +119,7 @@ const FeaturedProducts = () => {
                     View Details
                   </Link>
                   <a
-                    href={`https://wa.me/919XXXXXXXXX?text=I'm%20interested%20in%20${product.name}`}
+                    href={`https://wa.me/+916261758053?text=I'm%20interested%20in%20${product.name}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-green-500 hover:text-green-600 transition-colors"

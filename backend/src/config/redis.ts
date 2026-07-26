@@ -3,7 +3,6 @@ import { createClient } from 'redis'
 let client: any = null
 let isConnected = false
 
-// Mock Redis client for fallback
 class MockRedisClient {
   private store: Map<string, { value: string; expires: number }> = new Map()
 
@@ -37,22 +36,20 @@ class MockRedisClient {
 
 export const connectRedis = async () => {
   try {
-    // Use your Redis Cloud credentials
-    const redisUrl = process.env.REDIS_URL || 'redis://default:4y7emg6dg5gukS5fi2VjLtd2ZFKdadTN@exquisite-ultrafast-blush-58315.db.redis.io:18624'
-    
-    console.log(`🔄 Connecting to Redis Cloud...`)
+    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379'
+    console.log(`🔄 Connecting to Redis: ${redisUrl.substring(0, 30)}...`)
     
     client = createClient({
       url: redisUrl,
       socket: {
         reconnectStrategy: (retries: number) => {
-          if (retries > 10) {
+          if (retries > 5) {
             console.log('Redis: Max reconnection attempts reached')
             return new Error('Max reconnection attempts')
           }
           return Math.min(retries * 100, 3000)
         },
-        connectTimeout: 10000,
+        connectTimeout: 5000,
       },
     })
 
@@ -62,25 +59,16 @@ export const connectRedis = async () => {
     })
 
     client.on('connect', () => {
-      console.log('✅ Redis Cloud Connected')
+      console.log('✅ Redis Connected')
       isConnected = true
-    })
-
-    client.on('ready', () => {
-      console.log('✅ Redis Cloud Ready')
-      isConnected = true
-    })
-
-    client.on('reconnecting', () => {
-      console.log('🔄 Redis Cloud Reconnecting...')
     })
 
     await client.connect()
     isConnected = true
-    console.log('✅ Redis Cloud connected successfully')
+    console.log('✅ Redis connected successfully')
     return client
   } catch (error: any) {
-    console.warn('⚠️ Redis Cloud connection failed. Using memory fallback:', error.message)
+    console.warn('⚠️ Redis connection failed. Using memory fallback:', error.message)
     isConnected = false
     const mockClient = new MockRedisClient()
     console.log('✅ Using in-memory OTP store (Redis fallback)')
@@ -88,20 +76,11 @@ export const connectRedis = async () => {
   }
 }
 
-export const getRedisClient = () => {
-  if (!client) {
-    console.warn('Redis client not initialized, using memory fallback')
-    return new MockRedisClient()
-  }
-  return client
-}
-
 export const setOTP = async (mobile: string, otp: string) => {
   try {
     const redis = getRedisClient()
-    const key = `otp:${mobile}`
-    await redis.setEx(key, 300, otp) // 5 minutes expiry
-    console.log(`✅ OTP stored in Redis Cloud for ${mobile}`)
+    await redis.setEx(`otp:${mobile}`, 300, otp)
+    console.log(`✅ OTP stored for ${mobile}`)
     return true
   } catch (error) {
     console.error('Error storing OTP:', error)
@@ -112,14 +91,7 @@ export const setOTP = async (mobile: string, otp: string) => {
 export const getOTP = async (mobile: string): Promise<string | null> => {
   try {
     const redis = getRedisClient()
-    const key = `otp:${mobile}`
-    const otp = await redis.get(key)
-    if (otp) {
-      console.log(`📥 OTP retrieved for ${mobile}`)
-    } else {
-      console.log(`📥 No OTP found for ${mobile}`)
-    }
-    return otp
+    return await redis.get(`otp:${mobile}`)
   } catch (error) {
     console.error('Error getting OTP:', error)
     return null
@@ -129,12 +101,17 @@ export const getOTP = async (mobile: string): Promise<string | null> => {
 export const deleteOTP = async (mobile: string) => {
   try {
     const redis = getRedisClient()
-    const key = `otp:${mobile}`
-    await redis.del(key)
-    console.log(`🗑️ OTP deleted for ${mobile}`)
+    await redis.del(`otp:${mobile}`)
     return true
   } catch (error) {
     console.error('Error deleting OTP:', error)
     return false
   }
+}
+
+export const getRedisClient = () => {
+  if (!client) {
+    return new MockRedisClient()
+  }
+  return client
 }

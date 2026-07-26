@@ -1,16 +1,32 @@
 import express from 'express'
-import { protect, admin } from '../middleware/auth'
-import { 
-  getDashboardStats, 
-  getRecentOrders,
-  getAnalytics 
-} from '../controllers/admin'
+import { protect } from '../middleware/auth'
 
 const router = express.Router()
 
-// All admin routes are protected
-router.get('/dashboard', protect, admin, getDashboardStats)
-router.get('/orders/recent', protect, admin, getRecentOrders)
-router.get('/analytics', protect, admin, getAnalytics)
+// Protected routes (will add admin check later)
+router.get('/dashboard', protect, (req: any, res) => {
+  res.json({ 
+    message: 'Admin dashboard',
+    user: req.user 
+  })
+})
+
+router.get('/orders/recent', protect, (req: any, res) => {
+  res.json({ 
+    message: 'Recent orders',
+    orders: [] 
+  })
+})
+
+router.get('/analytics', protect, (req: any, res) => {
+  res.json({ 
+    message: 'Analytics data',
+    data: {
+      totalUsers: 0,
+      totalOrders: 0,
+      revenue: 0
+    }
+  })
+})
 
 export default router

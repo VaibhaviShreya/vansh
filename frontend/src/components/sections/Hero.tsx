@@ -12,14 +12,32 @@ import 'swiper/css/pagination'
 import 'swiper/css/navigation'
 
 const Hero = () => {
-  const productImages = [
-    { src: '/images/gi-wire.jpg', alt: 'GI Wire' },
-    { src: '/images/barbed-wire.jpg', alt: 'Barbed Wire' },
-    { src: '/images/chain-link.jpg', alt: 'Chain Link Fencing' },
-    { src: '/images/wire-mesh.jpg', alt: 'Wire Mesh' },
-    { src: '/images/nails.jpg', alt: 'Nails' },
-    { src: '/images/binding-wire.jpg', alt: 'Binding Wire' },
-  ]
+ const productImages = [
+    { 
+        src: 'https://res.cloudinary.com/ddtwc9qh4/image/upload/v1781565630/WhatsApp_Image_2026-06-13_at_23.38.29_xh55bn.jpg', 
+        alt: 'GI Wire' 
+    },
+    { 
+        src: 'https://res.cloudinary.com/ddtwc9qh4/image/upload/v1781565629/4_ahrycv.jpg', 
+        alt: 'Barbed Wire' 
+    },
+    { 
+        src: 'https://res.cloudinary.com/ddtwc9qh4/image/upload/v1781565629/6_w4ss2l.jpg', 
+        alt: 'Chain Link Fencing' 
+    },
+    { 
+        src: 'https://res.cloudinary.com/ddtwc9qh4/image/upload/v1781565629/7_w4ss2l.jpg', 
+        alt: 'Wire Mesh' 
+    },
+    { 
+        src: 'https://res.cloudinary.com/ddtwc9qh4/image/upload/v1781565628/5_x7pdmc.jpg', 
+        alt: 'Nails' 
+    },
+    { 
+        src: 'https://res.cloudinary.com/ddtwc9qh4/image/upload/v1781565628/3_ohlqkt.jpg', 
+        alt: 'Binding Wire' 
+    },
+]
 
   const stats = [
     { icon: FaUsers, value: '10,000+', label: 'Happy Customers' },
@@ -56,7 +74,15 @@ const Hero = () => {
                 {productImages.map((image, index) => (
                   <SwiperSlide key={index}>
                     <div className="relative w-full h-full bg-gray-800">
-                      {/* Placeholder image - replace with actual images */}
+                      {/* Placeholder image - replace with actual images */}<Image
+                        src={image.src}
+                        alt={image.alt}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                        priority={index === 0}
+                        quality={90}
+                      />
                       <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-900 to-purple-900">
                         <div className="text-center text-white p-4">
                           <div className="text-6xl mb-4">🔩</div>

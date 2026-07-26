@@ -17,26 +17,4 @@ export const connectDB = async () => {
   }
 }
 
-export const disconnectDB = async () => {
-  try {
-    await mongoose.disconnect()
-    console.log('✅ MongoDB Disconnected')
-  } catch (error) {
-    console.error('❌ MongoDB Disconnection Error:', error)
-  }
-}
-
-// Handle connection events
-mongoose.connection.on('error', (err) => {
-  console.error('❌ MongoDB Error:', err)
-})
-
-mongoose.connection.on('disconnected', () => {
-  console.log('⚠️ MongoDB Disconnected')
-})
-
-mongoose.connection.on('reconnected', () => {
-  console.log('✅ MongoDB Reconnected')
-})
-
 export default mongoose

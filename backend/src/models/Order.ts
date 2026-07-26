@@ -9,6 +9,7 @@ export interface IOrder extends Document {
   message?: string
   status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
   mobile: string
+  email: string
   name: string
 }
 
@@ -48,6 +49,13 @@ const OrderSchema = new Schema<IOrder>(
     mobile: {
       type: String,
       required: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      trim: true,
+      lowercase: true,
+      match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email address'],
     },
     name: {
       type: String,
