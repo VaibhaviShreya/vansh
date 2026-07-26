@@ -45,27 +45,30 @@ export default function RegisterPage() {
     }
   }
 
-  const handleVerifyOTP = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!formData.otp || formData.otp.length !== 6) {
-      toast.error('Please enter a valid 6-digit OTP')
-      return
-    }
-
-    setIsLoading(true)
-    try {
-      const token = await verifyOTP(formData.mobile, formData.otp)
-      console.log('OTP verified successfully:', token)
-      setStep(3)
-      toast.success('OTP verified successfully!')
-    } catch (error: any) {
-      console.error('Verify OTP error:', error)
-      toast.error(error.message || 'Invalid OTP. Please try again.')
-    } finally {
-      setIsLoading(false)
-    }
+  // In handleVerifyOTP function, send name along with mobile and otp
+// Update the handleVerifyOTP function
+const handleVerifyOTP = async (e: React.FormEvent) => {
+  e.preventDefault()
+  
+  if (!formData.otp || formData.otp.length !== 6) {
+    toast.error('Please enter a valid 6-digit OTP')
+    return
   }
+
+  setIsLoading(true)
+  try {
+    // Pass name as third argument
+    const result = await verifyOTP(formData.mobile, formData.otp, formData.name)
+    console.log('OTP verified successfully:', result)
+    setStep(3)
+    toast.success('OTP verified successfully!')
+  } catch (error: any) {
+    console.error('Verify OTP error:', error)
+    toast.error(error.message || 'Invalid OTP. Please try again.')
+  } finally {
+    setIsLoading(false)
+  }
+}
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()

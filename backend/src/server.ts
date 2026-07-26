@@ -6,7 +6,6 @@ import compression from 'compression'
 import dotenv from 'dotenv'
 import { rateLimit } from 'express-rate-limit'
 import { connectDB } from './config/database'
-import { connectRedis } from './config/redis'
 import apiRoutes from './routes'
 import { errorHandler } from './middleware/errorHandler'
 
@@ -91,6 +90,15 @@ app.get('/api/health', (req, res) => {
   })
 })
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    name: 'Vansh Enterprises API',
+    version: '1.0.0',
+    status: 'running'
+  })
+})
+
 // Error handler
 app.use(errorHandler)
 
@@ -107,13 +115,6 @@ const startServer = async () => {
   try {
     await connectDB()
     console.log('✅ MongoDB connected successfully')
-    
-    try {
-      await connectRedis()
-    } catch (error: any) {
-      console.warn('⚠️ Redis connection warning:', error.message)
-      console.log('✅ Using in-memory OTP storage as fallback')
-    }
     
     app.listen(PORT, () => {
       console.log(`\n🚀 Server running on port ${PORT}`)

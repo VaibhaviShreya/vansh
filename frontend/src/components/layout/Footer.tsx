@@ -52,16 +52,11 @@ const Footer = () => {
                   Products
                 </Link>
               </li>
-              <li>
-                <Link href="/about" className="text-gray-400 hover:text-primary-blue transition-colors">
-                  About Us
-                </Link>
-              </li>
-              <li>
+              {/* <li>
                 <Link href="/contact" className="text-gray-400 hover:text-primary-blue transition-colors">
                   Contact
                 </Link>
-              </li>
+              </li> */}
               <li>
                 <Link href="/register" className="text-gray-400 hover:text-primary-blue transition-colors">
                   Become a Dealer

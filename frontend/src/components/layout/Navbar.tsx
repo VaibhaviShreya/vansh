@@ -32,7 +32,7 @@ const Navbar = () => {
   const navLinks = [
     { name: 'Home', href: '/' },
     { name: 'Products', href: '/products' },
-    { name: 'Contact', href: '/contact' },
+    // { name: 'Contact', href: '/contact' },
   ]
 
   return (

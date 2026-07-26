@@ -4,10 +4,10 @@ import bcrypt from 'bcryptjs'
 export interface IUser extends Document {
   name: string
   mobile: string
-  email?: string
   password: string
   role: 'user' | 'admin'
   isVerified: boolean
+  otpVerified?: boolean
   comparePassword(candidatePassword: string): Promise<boolean>
 }
 
@@ -15,8 +15,9 @@ const UserSchema = new Schema<IUser>(
   {
     name: {
       type: String,
-      required: [true, 'Name is required'],
+      required: false,
       trim: true,
+      default: ''
     },
     mobile: {
       type: String,
@@ -24,16 +25,10 @@ const UserSchema = new Schema<IUser>(
       unique: true,
       trim: true,
     },
-    email: {
-      type: String,
-      trim: true,
-      lowercase: true,
-      match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email address'],
-    },
     password: {
       type: String,
-      required: false,
-      minlength: [6, 'Password must be at least 6 characters'],
+      required: false, // Changed to false
+      default: ''
     },
     role: {
       type: String,
@@ -44,14 +39,19 @@ const UserSchema = new Schema<IUser>(
       type: Boolean,
       default: false,
     },
+    otpVerified: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
   }
 )
 
+// Only hash password if it exists and is modified
 UserSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next()
+  if (!this.password || !this.isModified('password')) return next()
   const salt = await bcrypt.genSalt(10)
   this.password = await bcrypt.hash(this.password, salt)
   next()
@@ -60,6 +60,7 @@ UserSchema.pre('save', async function (next) {
 UserSchema.methods.comparePassword = async function (
   candidatePassword: string
 ): Promise<boolean> {
+  if (!this.password) return false
   return bcrypt.compare(candidatePassword, this.password)
 }
 

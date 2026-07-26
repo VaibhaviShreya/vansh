@@ -1,13 +1,9 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import path from 'node:path'
+import type { NextConfig } from 'next'
+
+const nextConfig: NextConfig = {
+  // ✅ CORRECT: Use `remotePatterns` instead of deprecated `domains`
   images: {
-    domains: [
-      'localhost',
-      'res.cloudinary.com',  // ✅ Add this
-      'images.unsplash.com',
-      'via.placeholder.com',
-      'picsum.photos'
-    ],
     remotePatterns: [
       {
         protocol: 'https',
@@ -19,11 +15,6 @@ const nextConfig = {
         hostname: 'images.unsplash.com',
         pathname: '/**',
       },
-      {
-        protocol: 'https',
-        hostname: 'picsum.photos',
-        pathname: '/**',
-      },
     ],
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
@@ -33,11 +24,21 @@ const nextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
-  swcMinify: true,
-  // Add this for better image optimization
+  // ✅ REMOVE: `swcMinify` is no longer a valid top-level option
+  // swcMinify: true, // DELETE THIS LINE
+
+  // ✅ CORRECT: `optimizeCss` is an experimental feature
   experimental: {
     optimizeCss: true,
   },
+  
+  // ✅ CORRECT: Set the `turbopack.root` to fix the lockfile warning
+  turbopack: {
+    root: path.resolve(__dirname), // Points to the frontend directory
+  },
+  
+  // Optional: Keep this if you had it
+  poweredByHeader: false,
 }
 
-module.exports = nextConfig
+export default nextConfig

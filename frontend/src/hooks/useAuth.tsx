@@ -21,8 +21,9 @@ interface AuthContextType {
   register: (data: RegisterData) => Promise<void>
   logout: () => Promise<void>
   sendOTP: (mobile: string) => Promise<any>
-  verifyOTP: (mobile: string, otp: string) => Promise<string>
+  verifyOTP: (mobile: string, otp: string, name?: string) => Promise<{ token: string; userId: string }>
   setPassword: (userId: string, password: string) => Promise<{ token: string; user: User }>
+  resendOTP: (mobile: string) => Promise<any>
 }
 
 interface RegisterData {
@@ -86,13 +87,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false)
   }, [])
 
+  // Send OTP
   const sendOTP = async (mobile: string) => {
     try {
       console.log(`📤 Sending OTP to: ${API_URL}/auth/send-otp`)
       const response = await axios.post(`${API_URL}/auth/send-otp`, { mobile })
       console.log('✅ OTP Response:', response.data)
-      toast.success('OTP sent successfully!')
-      return response.data
+      
+      if (response.data.success) {
+        toast.success('OTP sent successfully!')
+        return response.data
+      } else {
+        throw new Error(response.data.message || 'Failed to send OTP')
+      }
     } catch (error: any) {
       console.error('❌ Send OTP error:', error)
       const errorMessage = error.response?.data?.message || 'Failed to send OTP'
@@ -101,37 +108,103 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const verifyOTP = async (mobile: string, otp: string) => {
+  // Verify OTP - Now accepts 3 arguments (mobile, otp, name)
+  const verifyOTP = async (mobile: string, otp: string, name?: string) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/verify-otp`, { mobile, otp })
-      if (!response.data.token) {
-        throw new Error('Invalid OTP')
+      console.log(`📤 Verifying OTP for ${mobile}: ${otp}`)
+      
+      const response = await axios.post(`${API_URL}/auth/verify-otp`, {
+        mobile,
+        otp,
+        name: name || 'User' // Send name if available
+      })
+      
+      console.log('✅ Verify OTP Response:', response.data)
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Invalid OTP')
       }
-      return response.data.token
+      
+      return {
+        token: response.data.token,
+        userId: response.data.data?.userId
+      }
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Invalid OTP'
+      console.error('❌ Verify OTP error:', error)
+      console.error('Error response:', error.response?.data)
+      
+      let errorMessage = 'Invalid OTP'
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message
+      }
+      
       toast.error(errorMessage)
       throw error
     }
   }
 
+  // Resend OTP
+  const resendOTP = async (mobile: string) => {
+    try {
+      console.log(`📤 Resending OTP to: ${API_URL}/auth/resend-otp`)
+      const response = await axios.post(`${API_URL}/auth/resend-otp`, { mobile })
+      console.log('✅ Resend OTP Response:', response.data)
+      
+      if (response.data.success) {
+        toast.success('OTP resent successfully!')
+        return response.data
+      } else {
+        throw new Error(response.data.message || 'Failed to resend OTP')
+      }
+    } catch (error: any) {
+      console.error('❌ Resend OTP error:', error)
+      const errorMessage = error.response?.data?.message || 'Failed to resend OTP'
+      toast.error(errorMessage)
+      throw error
+    }
+  }
+
+  // Set password
   const setPassword = async (userId: string, password: string) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/set-password`, { userId, password })
-      if (!response.data.token || !response.data.user) {
-        throw new Error('Failed to set password')
+      console.log(`📤 Setting password for user: ${userId}`)
+      
+      const response = await axios.post(`${API_URL}/auth/set-password`, {
+        userId,
+        password
+      })
+      
+      console.log('✅ Set Password Response:', response.data)
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to set password')
       }
+      
+      if (!response.data.token || !response.data.user) {
+        throw new Error('Invalid response from server')
+      }
+      
       return response.data
     } catch (error: any) {
+      console.error('❌ Set password error:', error)
       const errorMessage = error.response?.data?.message || 'Failed to set password'
       toast.error(errorMessage)
       throw error
     }
   }
 
+  // Login
   const login = async (mobile: string, password: string) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/login`, { mobile, password })
+      console.log(`📤 Logging in: ${mobile}`)
+      
+      const response = await axios.post(`${API_URL}/auth/login`, {
+        mobile,
+        password
+      })
+      
+      console.log('✅ Login Response:', response.data)
+      
       const { token, user: userData } = response.data
       
       if (token && userData) {
@@ -145,41 +218,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Invalid response from server')
       }
     } catch (error: any) {
+      console.error('❌ Login error:', error)
       const errorMessage = error.response?.data?.message || 'Login failed'
       toast.error(errorMessage)
       throw error
     }
   }
 
+  // Register
   const register = async (data: RegisterData) => {
     try {
-      const verifyResponse = await axios.post(`${API_URL}/auth/verify-otp`, {
-        mobile: data.mobile,
-        otp: data.otp,
-      })
-
-      if (!verifyResponse.data.user?.id) {
+      console.log(`📤 Registering user: ${data.mobile}`)
+      
+      // Step 1: Verify OTP with name
+      const verifyResult = await verifyOTP(data.mobile, data.otp, data.name)
+      
+      if (!verifyResult.userId) {
         throw new Error('OTP verification failed')
       }
-
-      const { token, user: userData } = await setPassword(
-        verifyResponse.data.user.id, 
-        data.password
-      )
-
-      localStorage.setItem('token', token)
-      localStorage.setItem('user', JSON.stringify(userData))
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-      setUser(userData)
+      
+      // Step 2: Set password
+      const result = await setPassword(verifyResult.userId, data.password)
+      
+      // Step 3: Save user data
+      localStorage.setItem('token', result.token)
+      localStorage.setItem('user', JSON.stringify(result.user))
+      axios.defaults.headers.common['Authorization'] = `Bearer ${result.token}`
+      setUser(result.user)
+      
       toast.success('Registration successful!')
       router.push('/dashboard')
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Registration failed'
+      console.error('❌ Registration error:', error)
+      const errorMessage = error.response?.data?.message || error.message || 'Registration failed'
       toast.error(errorMessage)
       throw error
     }
   }
 
+  // Logout
   const logout = async () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
@@ -199,6 +276,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sendOTP,
     verifyOTP,
     setPassword,
+    resendOTP,
   }
 
   return (

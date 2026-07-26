@@ -1,163 +1,239 @@
 import { Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
 import { User } from '../models/User'
-import { setOTP, getOTP, deleteOTP } from '../config/redis'
+
+// In-memory OTP store
+const otpStore = new Map<string, { otp: string; expires: number }>()
+
+const generateOTP = (): string => {
+  return Math.floor(100000 + Math.random() * 900000).toString()
+}
 
 export const sendOTP = async (req: Request, res: Response) => {
   try {
     const { mobile } = req.body
 
+    console.log('📤 Send OTP for:', mobile)
+
     if (!mobile) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'Mobile number is required' 
+        message: 'Mobile number is required'
       })
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString()
-    await setOTP(mobile, otp)
+    if (!/^[0-9]{10}$/.test(mobile)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter a valid 10-digit mobile number'
+      })
+    }
+
+    const otp = generateOTP()
     console.log(`📱 OTP for ${mobile}: ${otp}`)
+
+    otpStore.set(mobile, {
+      otp,
+      expires: Date.now() + 5 * 60 * 1000
+    })
 
     res.json({
       success: true,
       message: 'OTP sent successfully',
-      otp: process.env.NODE_ENV === 'development' ? otp : undefined,
+      data: {
+        mobile,
+        otp: process.env.NODE_ENV === 'development' ? otp : undefined,
+        expiresIn: 300
+      }
     })
   } catch (error) {
     console.error('Send OTP error:', error)
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: 'Failed to send OTP' 
+      message: 'Failed to send OTP'
     })
   }
 }
 
 export const verifyOTP = async (req: Request, res: Response) => {
   try {
-    const { mobile, otp, email, name } = req.body
+    const { mobile, otp, name } = req.body
+
+    console.log(`🔍 Verifying OTP for ${mobile}: ${otp}`)
 
     if (!mobile || !otp) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'Mobile and OTP are required' 
+        message: 'Mobile number and OTP are required'
       })
     }
 
-    const storedOTP = await getOTP(mobile)
+    const stored = otpStore.get(mobile)
 
-    if (!storedOTP || storedOTP !== otp) {
-      return res.status(400).json({ 
+    if (!stored) {
+      return res.status(400).json({
         success: false,
-        message: 'Invalid or expired OTP' 
+        message: 'OTP expired or not found'
       })
     }
 
-    await deleteOTP(mobile)
+    if (Date.now() > stored.expires) {
+      otpStore.delete(mobile)
+      return res.status(400).json({
+        success: false,
+        message: 'OTP expired'
+      })
+    }
 
+    if (stored.otp !== otp) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid OTP'
+      })
+    }
+
+    otpStore.delete(mobile)
+
+    // Check if user exists
     let user = await User.findOne({ mobile })
 
     if (!user) {
+      // Create temporary user with empty password
+      // Using save() with validate: false to bypass validation
       user = new User({
         mobile,
         name: name || '',
-        email,
+        password: '', // Empty password
         isVerified: false,
         role: 'user',
+        otpVerified: true
       })
-      await user.save()
-      console.log('✅ New user created:', user._id)
-    }
-
-    if (email && user.email !== email.toLowerCase()) {
-      user.email = email
-      if (name) user.name = name
-      await user.save()
+      await user.save({ validateBeforeSave: false })
+      console.log('✅ Temporary user created:', user._id)
     }
 
     const token = jwt.sign(
       { id: user._id, mobile: user.mobile, role: user.role },
-      process.env.JWT_SECRET!,
-      { expiresIn: '1h' }
+      process.env.JWT_SECRET as string,
+      { expiresIn: '10m' }
     )
 
     res.json({
       success: true,
-      message: 'OTP verified successfully',
+      message: 'OTP verified',
       token,
-      user: {
-        id: user._id,
+      data: {
+        userId: user._id,
         mobile: user.mobile,
-        email: user.email,
         name: user.name,
         isVerified: user.isVerified,
-        hasPassword: !!user.password,
-        role: user.role,
-      },
+        hasPassword: !!user.password
+      }
     })
   } catch (error) {
     console.error('Verify OTP error:', error)
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: 'Failed to verify OTP' 
+      message: 'Failed to verify OTP',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    })
+  }
+}
+
+export const resendOTP = async (req: Request, res: Response) => {
+  try {
+    const { mobile } = req.body
+
+    if (!mobile) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mobile number is required'
+      })
+    }
+
+    const otp = generateOTP()
+    console.log(`📱 Resend OTP for ${mobile}: ${otp}`)
+
+    otpStore.set(mobile, {
+      otp,
+      expires: Date.now() + 5 * 60 * 1000
+    })
+
+    res.json({
+      success: true,
+      message: 'OTP resent',
+      data: {
+        mobile,
+        otp: process.env.NODE_ENV === 'development' ? otp : undefined,
+        expiresIn: 300
+      }
+    })
+  } catch (error) {
+    console.error('Resend OTP error:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Failed to resend OTP'
     })
   }
 }
 
 export const setPassword = async (req: Request, res: Response) => {
   try {
-    const { userId, password } = req.body
+    const { userId, password, name } = req.body
+
+    console.log('📤 Setting password for user:', userId)
 
     if (!userId || !password) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'User ID and password are required' 
+        message: 'User ID and password are required'
       })
     }
 
     if (password.length < 6) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'Password must be at least 6 characters' 
+        message: 'Password must be at least 6 characters'
       })
     }
 
     const user = await User.findById(userId)
     if (!user) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: 'User not found' 
+        message: 'User not found'
       })
     }
 
+    // Update user with password and name
     user.password = password
     user.isVerified = true
+    if (name) user.name = name
     await user.save()
-    console.log('✅ Password set for user:', user._id)
 
     const token = jwt.sign(
       { id: user._id, role: user.role },
-      process.env.JWT_SECRET!,
+      process.env.JWT_SECRET as string,
       { expiresIn: '7d' }
     )
 
     res.json({
       success: true,
-      message: 'Password set successfully',
+      message: 'Registration completed',
       token,
       user: {
         id: user._id,
         name: user.name,
         mobile: user.mobile,
-        email: user.email,
         role: user.role,
-        isVerified: user.isVerified,
-      },
+        isVerified: user.isVerified
+      }
     })
   } catch (error) {
     console.error('Set password error:', error)
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: 'Failed to set password' 
+      message: 'Failed to set password'
     })
   }
 }
@@ -167,38 +243,38 @@ export const login = async (req: Request, res: Response) => {
     const { mobile, password } = req.body
 
     if (!mobile || !password) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'Mobile and password are required' 
+        message: 'Mobile and password are required'
       })
     }
 
     const user = await User.findOne({ mobile })
     if (!user) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         success: false,
-        message: 'Invalid credentials' 
+        message: 'Invalid credentials'
       })
     }
 
     if (!user.isVerified) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         success: false,
-        message: 'Account not verified' 
+        message: 'Account not verified'
       })
     }
 
     const isMatch = await user.comparePassword(password)
     if (!isMatch) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         success: false,
-        message: 'Invalid credentials' 
+        message: 'Invalid credentials'
       })
     }
 
     const token = jwt.sign(
       { id: user._id, role: user.role },
-      process.env.JWT_SECRET!,
+      process.env.JWT_SECRET as string,
       { expiresIn: '7d' }
     )
 
@@ -210,16 +286,15 @@ export const login = async (req: Request, res: Response) => {
         id: user._id,
         name: user.name,
         mobile: user.mobile,
-        email: user.email,
         role: user.role,
-        isVerified: user.isVerified,
-      },
+        isVerified: user.isVerified
+      }
     })
   } catch (error) {
     console.error('Login error:', error)
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: 'Failed to login' 
+      message: 'Failed to login'
     })
   }
 }
